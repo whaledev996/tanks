@@ -34,19 +34,19 @@ function animate() {
 	requestAnimationFrame( animate );
 	renderer.render( scene, camera );
     if (keys.has("ArrowLeft")) {
-        cube.translateX(-0.1);
+        cube.rotateZ(0.02);
     }
 
     if (keys.has("ArrowUp")) {
-        cube.translateY(0.1);
+        cube.translateY(0.05);
     }
 
     if (keys.has("ArrowRight")) {
-        cube.translateX(0.1);
+        cube.rotateZ(-0.02);
     }
 
     if (keys.has("ArrowDown")) {
-        cube.translateY(-0.1);
+        cube.translateY(-0.05);
     }
 }
 animate();
