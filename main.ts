@@ -87,6 +87,7 @@ function animate() {
         console.log(boundingBox.intersectsBox(boundingBox2));
         // if (cube.position.y < standardBox.position.y - 1) {
         cube.translateY(0.05);
+        boundingBox.setFromObject(cube);
         if (boundingBox.intersectsBox(boundingBox2)) {
             cube.translateY(-0.05);
         }
@@ -100,6 +101,7 @@ function animate() {
     if (keys.has("s")) {
         // if (cube.position.y < standardBox.position.y) {
         cube.translateY(-0.05);
+        boundingBox.setFromObject(cube);
         if (boundingBox.intersectsBox(boundingBox2)) {
             cube.translateY(0.05);
         }
