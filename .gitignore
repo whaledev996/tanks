@@ -127,6 +127,9 @@ dist/
 # Grunt usually preprocesses files such as coffeescript, compass... inside the .tmp directory
 .tmp/
 
+# vim
+*.swp
+
 
 ### SublimeText ###
 # cache files for sublime text

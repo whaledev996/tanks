@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+const camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
@@ -16,11 +16,55 @@ scene.add( cube );
 // const boundingBox = cube.geometry.computeBoundingBox();
 
 camera.position.z = 25;
-camera.position.y = -6;
+camera.position.y = -10;
 //camera.position.x = 12;
 //camera.rotation.x += 1;
 camera.lookAt(0, 0, 0);
 //console.log(camera.lo)
+//
+
+
+var vec = new THREE.Vector3(); // create once and reuse
+var pos = new THREE.Vector3(); // create once and reuse
+const projectileGeometry = new THREE.CapsuleGeometry( 0.3, 0.5, 4, 8); 
+const projectileMaterial = new THREE.MeshBasicMaterial( { color: 0xffffff } ); 
+const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+
+window.addEventListener("mousedown", (event) => {
+    // shoot projectile
+    vec.set(
+        ( event.clientX / window.innerWidth ) * 2 - 1,
+        - ( event.clientY / window.innerHeight ) * 2 + 1,
+        0.5 );
+
+    vec.unproject( camera );
+
+    vec.sub( camera.position ).normalize();
+
+    var distance = - camera.position.z / vec.z;
+
+    pos.copy( camera.position ).add( vec.multiplyScalar( distance ) );
+    console.log(pos);
+    projectile.position.x = cube.position.x;
+    projectile.position.y = cube.position.y;
+    projectile.position.z = cube.position.z;
+    //projectile.setRotationFromAxisAngle
+    //projectile.rotateZ
+    //pos.
+    // find angle of rotation between tank and mouse pointer vector
+    const testVector = new THREE.Vector3();
+    testVector.copy(cube.position);
+    //const other = pos.sub(cube.position);
+    const other = testVector.sub(pos);
+    const cosine = cube.position.dot(other) / (cube.position.length() * other.length());
+    const angle = Math.acos(cosine);
+
+    console.log(angle);
+    //projectile.rotateZ(angle);
+    //projectile.rotation.z = angle;
+    projectile.rotation.z = angle;
+    scene.add(projectile);
+})
 
 const keys = new Set();
 const arrowKeys = new Set(["w", "a", "s", "d"]);
@@ -39,6 +83,11 @@ window.addEventListener("keydown", (e) => {
     }
 });
 
+//document.addEventListener("click", (e) => {
+    //console.log((e.clientX / window.innerWidth) * 2 - 1);
+    //console.log(-(e.clientY / window.innerHeight) * 2 + 1);
+//})
+
 const boxGeometry = new THREE.BoxGeometry(20, 2, 5);
 const loader = new THREE.TextureLoader();
 const boxMesh = new THREE.MeshStandardMaterial({
@@ -46,7 +95,7 @@ const boxMesh = new THREE.MeshStandardMaterial({
  });
 boxMesh.color.convertSRGBToLinear();
 const standardBox = new THREE.Mesh(boxGeometry, boxMesh);
-standardBox.position.set(0, 11, 2);
+standardBox.position.set(0, 8, 2);
 scene.add(standardBox);
 
 const light = new THREE.HemisphereLight(0xddeeff, 0x202020, 5);
@@ -56,14 +105,14 @@ scene.add(light);
 const helper = new THREE.BoxHelper(cube);
 const boundingBox = new THREE.Box3().setFromObject(cube);
 const boundingBox2 = new THREE.Box3().setFromObject(standardBox);
-console.log(boundingBox2.min)
-console.log(boundingBox2.max)
+//console.log(boundingBox2.min)
+//console.log(boundingBox2.max)
 //cube.geometry.compu
 
 
 function animate() {
-	requestAnimationFrame( animate );
-	renderer.render( scene, camera );
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
     boundingBox.setFromObject(cube);
     // helper.update();
     //boxMesh.rotateZ(0.01);
@@ -82,9 +131,10 @@ function animate() {
     }
 
     if (keys.has("w")) {
-        console.log(boundingBox.min);
-        console.log(boundingBox.max);
-        console.log(boundingBox.intersectsBox(boundingBox2));
+        console.log(cube.position);
+        // console.log(boundingBox.min);
+        // console.log(boundingBox.max);
+        // console.log(boundingBox.intersectsBox(boundingBox2));
         // if (cube.position.y < standardBox.position.y - 1) {
         cube.translateY(0.05);
         boundingBox.setFromObject(cube);
@@ -100,6 +150,7 @@ function animate() {
 
     if (keys.has("s")) {
         // if (cube.position.y < standardBox.position.y) {
+        console.log(cube.position);
         cube.translateY(-0.05);
         boundingBox.setFromObject(cube);
         if (boundingBox.intersectsBox(boundingBox2)) {
