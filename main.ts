@@ -27,6 +27,8 @@ camera.lookAt(0, 0, 0);
 var vec = new THREE.Vector3(); // create once and reuse
 var pos = new THREE.Vector3(); // create once and reuse
 const projectileGeometry = new THREE.CapsuleGeometry( 0.3, 0.5, 4, 8); 
+projectileGeometry.applyMatrix4( new THREE.Matrix4().makeRotationX( Math.PI / 2 ) );
+
 const projectileMaterial = new THREE.MeshBasicMaterial( { color: 0xffffff } ); 
 const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
 
@@ -48,26 +50,37 @@ window.addEventListener("mousedown", (event) => {
     projectile.position.x = cube.position.x;
     projectile.position.y = cube.position.y;
     projectile.position.z = cube.position.z;
+    //console.log(projectile.rotation.z);
     //projectile.setRotationFromAxisAngle
     //projectile.rotateZ
     //pos.
     // find angle of rotation between tank and mouse pointer vector
     const testVector = new THREE.Vector3();
     testVector.copy(cube.position);
+    const xAxis = new THREE.Vector3(0, 0, 1)
     //const other = pos.sub(cube.position);
-    const other = testVector.sub(pos);
-    const cosine = cube.position.dot(other) / (cube.position.length() * other.length());
-    const angle = Math.acos(cosine);
+    //THREE.vec
+    const other = testVector.add(pos);
+    const cosine = xAxis.dot(other) / (other.length());
+    const ajngle = Math.acos(cosine);
+    //projectile.quaternion.setFromUnitVectors(xAxis, pos.clone().normalize());
+    //projectile.setRotationFromAxisAngle
+    //console.log(pos);
+    //console.log(pos.applyAxisAngle(xAxis, Math.PI/2))
+    projectile.lookAt(pos);
+    //projectile.rotateZ(Math.PI/2)
 
-    console.log(angle);
+
+    console.log(projectile.rotation);
     //projectile.rotateZ(angle);
     //projectile.rotation.z = angle;
-    projectile.rotation.z = angle;
+    //projectile.rotation.z = angle;
+    //console.log(projectile.rotation.z);
     scene.add(projectile);
 })
 
 const keys = new Set();
-const arrowKeys = new Set(["w", "a", "s", "d"]);
+const arrowKeys = new Set(["w", "a", "s", "d", "y"]);
 window.addEventListener("keyup", (e) => {
     const key = e.key;
     console.log(key);
@@ -125,6 +138,10 @@ function animate() {
 
     
     //test_dir.multiplyScalar(0.05)
+    //
+    if (keys.has("y")) {
+        projectile.translateZ(0.05);
+    }
 
     if (keys.has("a")) {
         cube.rotateZ(0.02);
