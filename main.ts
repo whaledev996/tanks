@@ -31,6 +31,9 @@ projectileGeometry.applyMatrix4( new THREE.Matrix4().makeRotationX( Math.PI / 2 
 
 const projectileMaterial = new THREE.MeshBasicMaterial( { color: 0xffffff } ); 
 const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+const projectileBox = new THREE.Box3().setFromObject(projectile);
+let projectileAdded = false;
+let direction = 1;
 
 window.addEventListener("mousedown", (event) => {
     // shoot projectile
@@ -62,7 +65,7 @@ window.addEventListener("mousedown", (event) => {
     //THREE.vec
     const other = testVector.add(pos);
     const cosine = xAxis.dot(other) / (other.length());
-    const ajngle = Math.acos(cosine);
+    // const ajngle = Math.acos(cosine);
     //projectile.quaternion.setFromUnitVectors(xAxis, pos.clone().normalize());
     //projectile.setRotationFromAxisAngle
     //console.log(pos);
@@ -72,11 +75,13 @@ window.addEventListener("mousedown", (event) => {
 
 
     console.log(projectile.rotation);
+    //console.log(projectile.rotation.x)
     //projectile.rotateZ(angle);
     //projectile.rotation.z = angle;
     //projectile.rotation.z = angle;
     //console.log(projectile.rotation.z);
     scene.add(projectile);
+    projectileAdded = true;
 })
 
 const keys = new Set();
@@ -174,6 +179,18 @@ function animate() {
             cube.translateY(0.05);
         }
         // }
+    }
+    if (projectileAdded) {
+        projectile.translateZ(direction * 0.05);
+        // projectile.rotateX(-0.01);
+        projectileBox.setFromObject(projectile);
+        if (projectileBox.intersectsBox(boundingBox2)) {
+            direction = -1;
+            ///rojectile.rotateX(Math.PI/2);
+            //projectile.translateZ(direction * 0.05);
+            //projectile.
+            projectile.rotation.y *= -1;
+        }
     }
 }
 animate();
