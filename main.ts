@@ -7,10 +7,102 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
-const geometry = new THREE.BoxGeometry( 1, 1, 0.5);
-const material = new THREE.MeshBasicMaterial( { color: 0x4287f5 } );
-const cube = new THREE.Mesh( geometry, material );
-scene.add( cube );
+class Tank {
+    geometry: THREE.BoxGeometry;
+    material: THREE.MeshBasicMaterial;
+    mesh: THREE.Mesh;
+    movementSpeed: number;
+    rotationSpeed: number;
+    boundingBox: THREE.Box3;
+
+    constructor(width = 1, height = 1, depth = 0.5, color = 0x4287f5, movementSpeed = 0.05, rotationSpeed = 0.03) {
+        this.geometry = new THREE.BoxGeometry( width, height, depth);
+        this.material = new THREE.MeshBasicMaterial( { color: color } );
+        this.mesh = new THREE.Mesh( this.geometry, this.material );
+        this.movementSpeed = movementSpeed;
+        this.rotationSpeed = rotationSpeed;
+        this.boundingBox = new THREE.Box3().setFromObject(this.mesh);
+    }
+
+    moveForward() {
+        this.mesh.translateY(this.movementSpeed);
+        this.boundingBox.setFromObject(this.mesh);
+    }
+
+    moveBackward() {
+        this.mesh.translateY(-1 * this.movementSpeed);
+        this.boundingBox.setFromObject(this.mesh);
+    }
+
+    rotateLeft() {
+        this.mesh.rotateZ(this.rotationSpeed)
+    }
+
+    rotateRight() {
+        this.mesh.rotateZ(-1 * this.rotationSpeed)
+    }
+
+    intersects(other: THREE.Box3) {
+        return this.boundingBox.intersectsBox(other);
+    }
+}
+
+class Client {
+
+    websocket: WebSocket;
+    id: string;
+    
+    constructor() {
+        this.websocket = new WebSocket("ws://localhost:8765/");
+        this.id = crypto.randomUUID();
+    }
+
+    send(message, callback) {
+        this.waitForConnection(() => {
+            this.websocket.send(message);
+            if (typeof callback !== 'undefined') {
+                callback();
+            }
+        }, 1000)
+    }
+
+    waitForConnection(callback, interval) {
+        if (this.websocket.readyState === 1) {
+            callback();
+        } else {
+            var that = this;
+            // optional: implement backoff for interval here
+            setTimeout(function () {
+                that.waitForConnection(callback, interval);
+            }, interval);
+        }
+    };
+
+    connect() {
+        const event = {type: "init"}
+        this.send(JSON.stringify(event), undefined)
+    }
+
+    sendMovement() {
+        const ts = Date.now()
+        const projectilePositions: Array<Array<Number>> = []
+        for (const p of projectiles) {
+            const projectile = p[0]; 
+            const projectileBox = p[1];
+            const direction = p[2];
+            projectilePositions.push([projectile.position.x, projectile.position.y])
+        }
+        const data = {id: this.id, ts: ts, position: [player.mesh.position.x, player.mesh.position.y], projectiles: projectilePositions}
+        const event = {type: "position", data: data}
+        this.send(JSON.stringify(event), undefined)
+    }
+
+}
+
+
+const player = new Tank();
+
+scene.add( player.mesh );
 
 camera.position.z = 25;
 camera.position.y = -10;
@@ -19,18 +111,17 @@ camera.lookAt(0, 0, 0);
 
 var vec = new THREE.Vector3(); // create once and reuse
 var pos = new THREE.Vector3(); // create once and reuse
+
 const projectileGeometry = new THREE.CapsuleGeometry( 0.2, 0.3, 4, 8); 
 projectileGeometry.applyMatrix4( new THREE.Matrix4().makeRotationX( Math.PI / 2 ) );
 let projectiles: Array<Object> = []
+const client = new Client();
 
 
 window.addEventListener("mousedown", (event) => {
     const projectileMaterial = new THREE.MeshBasicMaterial( { color: 0xffffff } ); 
     const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
     const projectileBox = new THREE.Box3().setFromObject(projectile);
-    let projectileAdded = false;
-    let direction = 1;
-    // shoot projectile
     vec.set(
         ( event.clientX / window.innerWidth ) * 2 - 1,
         - ( event.clientY / window.innerHeight ) * 2 + 1,
@@ -43,29 +134,23 @@ window.addEventListener("mousedown", (event) => {
     var distance = - camera.position.z / vec.z;
 
     pos.copy( camera.position ).add( vec.multiplyScalar( distance ) );
-    console.log(pos);
-    projectile.position.x = cube.position.x;
-    projectile.position.y = cube.position.y;
-    projectile.position.z = cube.position.z;
-    // find angle of rotation between tank and mouse pointer vector
-    const testVector = new THREE.Vector3();
-    testVector.copy(cube.position);
-    const xAxis = new THREE.Vector3(0, 0, 1)
-    const other = testVector.add(pos);
-    const cosine = xAxis.dot(other) / (other.length());
+    projectile.position.x = player.mesh.position.x;
+    projectile.position.y = player.mesh.position.y;
+    projectile.position.z = player.mesh.position.z;
+
     projectile.lookAt(pos);
 
 
     console.log(projectile.rotation);
     scene.add(projectile);
     projectiles.push([projectile, projectileBox, 1]);
+    client.sendMovement();
 })
 
 const keys = new Set();
 const arrowKeys = new Set(["w", "a", "s", "d", "y"]);
 window.addEventListener("keyup", (e) => {
     const key = e.key;
-    console.log(key);
     if (arrowKeys.has(key)) {
         keys.delete(key);
     }
@@ -92,40 +177,60 @@ const light = new THREE.HemisphereLight(0xddeeff, 0x202020, 5);
 light.position.set(0, 0, 0);
 scene.add(light);
 
-const helper = new THREE.BoxHelper(cube);
-const boundingBox = new THREE.Box3().setFromObject(cube);
 const boundingBox2 = new THREE.Box3().setFromObject(standardBox);
+
+/* WebSocket code */
+window.addEventListener("DOMContentLoaded", () => {
+    console.log('connecting');
+    client.connect();
+})
 
 function animate() {
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
-    boundingBox.setFromObject(cube);
+    //const event = {type: "position", position: player.mesh.position}
+    //websocket.send(JSON.stringify(event))
+    //player.
 
     if (keys.has("a")) {
-        cube.rotateZ(0.02);
+        player.rotateLeft();
     }
 
     if (keys.has("w")) {
-        cube.translateY(0.05);
-        boundingBox.setFromObject(cube);
-        if (boundingBox.intersectsBox(boundingBox2)) {
-            cube.translateY(-0.05);
+        player.moveForward();
+        if (player.intersects(boundingBox2)) {
+            player.moveBackward();
         }
+        client.sendMovement();
     }
 
     if (keys.has("d")) {
-        cube.rotateZ(-0.02);
+        player.rotateRight();
     }
 
     if (keys.has("s")) {
-        console.log(cube.position);
-        cube.translateY(-0.05);
-        boundingBox.setFromObject(cube);
-        if (boundingBox.intersectsBox(boundingBox2)) {
-            cube.translateY(0.05);
+        player.moveBackward();
+        if (player.intersects(boundingBox2)) {
+            player.moveForward();
         }
+        client.sendMovement();
     }
     if (projectiles.length) {
+        camera.updateMatrix();
+        camera.updateMatrixWorld();
+        var frustum = new THREE.Frustum();
+        frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+        const newProjectiles: Array<Object> = []
+        for (const p of projectiles) {
+            const projectile = p[0]; 
+            if (frustum.containsPoint(p[0].position)) {
+                newProjectiles.push(p)
+            } else {
+                console.log('removing');
+                scene.remove(projectile.mesh);
+            }
+        }
+        projectiles = newProjectiles;
         for (const p of projectiles) {
             const projectile = p[0]; 
             const projectileBox = p[1];
@@ -136,9 +241,8 @@ function animate() {
                 p[2] *= -1;
                 projectile.rotation.y *= -1;
             }
-
-            
         }
+        client.sendMovement();
     }
 }
 animate();
