@@ -4,6 +4,7 @@ import { createServer } from "http";
 import { randomBytes } from 'crypto';
 import { parse } from 'url';
 import express from 'express';
+import { GameState } from "../types";
 
 const wss = new WebSocketServer({ port: 8080 });
 const games = {};
@@ -65,7 +66,7 @@ class Game {
   serialize() {
     const state = {}
     Object.values(this.tanks).forEach((tank) => {
-      state[tank.id] = [tank.tank.position.x, tank.tank.position.y, tank.tank.position.z]
+      state[tank.id] = {position: [tank.tank.position.x, tank.tank.position.y, tank.tank.position.z], rotation: 0}
     })
     return state;
   }

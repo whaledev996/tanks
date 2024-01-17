@@ -174,6 +174,8 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+// # window.addEventListener("keydown", (
+
 const boxGeometry = new THREE.BoxGeometry(20, 2, 4);
 const loader = new THREE.TextureLoader();
 const boxMesh = new THREE.MeshStandardMaterial({
