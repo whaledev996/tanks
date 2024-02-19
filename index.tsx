@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { TextureLoader } from "three/src/loaders/TextureLoader";
 import { Mesh } from "three";
 import React, { useEffect, useState, useRef } from "react";
+import { GameState, TankState } from "./types";
 
 function App() {
   const [gameId, setGameId] = useState("");
@@ -64,16 +65,19 @@ interface GameProps {
 }
 
 function Game(props: GameProps) {
-  const [otherTank, setOtherTank] = useState<number[]>([]);
-  function processGameState(obj: any): any {
+  const [otherTank, setOtherTank] = useState<TankState>({
+    position: [0, 0, 0],
+    rotation: 0,
+  });
+  function processGameState(gameState: GameState): any {
     console.log("processing game state");
-    console.log(obj);
-    for (const [key, value] of Object.entries(obj)) {
-      if (key === props.clientId) {
+    for (const [clientId, tankState] of Object.entries(gameState)) {
+      if (clientId === props.clientId) {
+        // this current client
         // reconcile this tanks position
       } else {
-        // this is another tank
-        setOtherTank(value as number[]);
+        // this is another client
+        setOtherTank(tankState);
       }
     }
   }
@@ -92,7 +96,10 @@ function Game(props: GameProps) {
         <Light />
         <Box />
         {otherTank && (
-          <OtherTank position={otherTank as [number, number, number]} />
+          <OtherTank
+            rotation={otherTank.rotation}
+            position={otherTank.position}
+          />
         )}
         <Tank
           clientId={props.clientId}
@@ -129,11 +136,19 @@ interface TankProps {
   clientId: string;
 }
 
-function OtherTank(props: { position: [number, number, number] }) {
+function OtherTank(props: TankState) {
   const meshRef = useRef<Mesh>(null);
 
   return (
-    <mesh ref={meshRef} position={props.position}>
+    <mesh
+      ref={meshRef}
+      position={props.position}
+      rotation={[
+        meshRef.current?.rotation.x || 0,
+        meshRef.current?.rotation.y || 0,
+        props.rotation,
+      ]}
+    >
       <boxGeometry args={[1, 1, 0.5]} />
       <meshBasicMaterial args={[{ color: "red" }]} />
     </mesh>

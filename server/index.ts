@@ -1,25 +1,30 @@
-import { WebSocketServer, WebSocket } from "ws";
+import { WebSocketServer } from "ws";
 import { Object3D } from "three";
-import { createServer } from "http";
 import { randomBytes } from 'crypto';
-import { parse } from 'url';
 import express from 'express';
-import { GameState } from "../types";
+import { GameState, Action, Client } from '../types';
 
-const wss = new WebSocketServer({ port: 8080 });
-const games = {};
+interface TanksServerState {
+  [gameId: string]: GameState;
+}
 
 class Tank {
 
-  constructor(id) {
-    this.tank = new Object3D();
+  id: string;
+  obj: Object3D;
+  movementSpeed: number;
+  rotationSpeed: number;
+  connection: any;
+
+  constructor(id: string) {
+    this.obj = new Object3D();
     this.movementSpeed = 0.05;
     this.rotationSpeed = 0.03;
     this.connection = null;
     this.id = id;
   }
 
-  step(action) {
+  step(action: Action) {
     if (action === "w") {
       this.moveForward();
     } 
@@ -35,38 +40,40 @@ class Tank {
   }
 
   moveForward() {
-    this.tank.translateY(this.movementSpeed);
+    this.obj.translateY(this.movementSpeed);
   }
 
   moveBackward() {
-    this.tank.translateY(-1 * this.movementSpeed);
+    this.obj.translateY(-1 * this.movementSpeed);
   }
 
   rotateLeft() {
-    this.tank.rotateZ(this.rotationSpeed)
+    this.obj.rotateZ(this.rotationSpeed)
   }
 
   rotateRight() {
-    this.tank.rotateZ(-1 * this.rotationSpeed)
+    this.obj.rotateZ(-1 * this.rotationSpeed)
   }
 }
 
-
 class Game {
 
-  constructor(id) {
+  id: string;
+  tanks: {[id: string]: Tank}
+
+  constructor(id: string) {
     this.id = id;
     this.tanks = {}
   }
 
-  addPlayer(id) {
+  addPlayer(id: string) {
     this.tanks[id] = new Tank(id);
   }
 
-  serialize() {
+  serialize(): GameState {
     const state = {}
     Object.values(this.tanks).forEach((tank) => {
-      state[tank.id] = {position: [tank.tank.position.x, tank.tank.position.y, tank.tank.position.z], rotation: 0}
+      state[tank.id] = {position: [tank.obj.position.x, tank.obj.position.y, tank.obj.position.z], rotation: tank.obj.rotation.z}
     })
     return state;
   }
@@ -82,39 +89,53 @@ class Game {
 
 }
 
-wss.on('connection', function connection(ws) {
-  // ws.on('error', console.error);
+class TanksServer {
 
-   ws.on('message', function message(data) {
-     const stringData = data.toString();
-     const jsonData = JSON.parse(stringData);
-     if ('gameId' in jsonData && 'clientId' in jsonData) {
-       const gameId = jsonData['gameId'];
-       const clientId = jsonData['clientId'];
-       if (gameId in games && clientId in games[gameId].tanks) {
-         const tank = games[gameId].tanks[clientId];
-         if (tank.connection === null) {
-           tank.connection = ws;
-         }
-         if ('action' in jsonData) {
-           tank.step(jsonData['action']);
-         }
-       }
-     }
-   });
+  games: {[gameId: string]: Game} = {};
 
-  // ws.send('something');
-});
+  constructor() {
+    this.games = {};
+  }
 
-// server game loop
-// every 100 ms send game state to clients
-setInterval(function() {
-  Object.values(games).forEach((game) => {
-    game.step();
-  })
-}, 100)
-//
-//
+  createGame(): Client {
+    const clientId = randomBytes(8).toString('hex');
+    const gameId = randomBytes(10).toString('hex');
+    const game = new Game(gameId);
+    game.addPlayer(clientId);
+    this.games[gameId] = game;
+    return {clientId: clientId, gameId: gameId};
+  }
+
+  joinGame(gameId: string): Client | undefined {
+    if (gameId in this.games) {
+      const game = this.games[gameId];
+      const clientId = randomBytes(8).toString('hex');
+      game.addPlayer(clientId);
+      return {clientId: clientId, gameId: gameId};
+    }
+  }
+
+  getPlayerForGame(gameId: string, clientId: string): Tank | undefined {
+    if (gameId in this.games) {
+      const game = this.games[gameId];
+      if (clientId in game.tanks) {
+        return game.tanks[clientId];
+      }
+    }
+  }
+
+  serialize(): TanksServerState {
+    const state = {}
+    for (const [gameId, game] of Object.entries(this.games)) {
+      state[gameId] = game.serialize();
+    }
+    return state;
+  }
+
+}
+
+const tanksServer = new TanksServer();
+
 // on /create, create the game, respond with client id, and game id,
 // on /join?{gameId}, add player to the game, respond with  client id
 // how do we not get hacked? 
@@ -129,29 +150,59 @@ app.get('/api/test', (_, res) =>
 ))
 
 app.post('/create', (req, res) => {
-  console.log('running create');
-  const clientId = randomBytes(8).toString('hex');
-  const gameId = randomBytes(10).toString('hex');
-  const g = new Game(gameId);
-  g.addPlayer(clientId);
-  games[gameId] = g;
-  console.log(games);
-  res.set('Access-Control-Allow-Origin', '*');
-  res.send(JSON.stringify({gameId: gameId, clientId: clientId}));
+  const client = tanksServer.createGame();
+  console.log(tanksServer.serialize())
+  res.json(client);
 });
 
 app.post('/join', (req, res) => {
-  console.log(req.body);
   if (req.body.gameId) {
     const gameId = req.body.gameId;
-    const game = games[gameId];
-    const clientId = randomBytes(8).toString('hex');
-    game.addPlayer(clientId);
-    console.log(games);
-    res.send(JSON.stringify({gameId: game.id, clientId: clientId}));
+    const client = tanksServer.joinGame(gameId);
+    console.log(tanksServer.serialize())
+    if (client) {
+      res.json(client);
+    } else {
+      res.status(400).json({message: "unable to join game"});
+    }
   }
 });
 
-//app.listen(port, () => {
-//  console.log(`Example app listening on port ${port}`)
-//});
+if (!process.env['VITE']) {
+  app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`)
+  });
+}
+
+const wss = new WebSocketServer({ port: 8080 });
+
+wss.on('connection', function connection(ws) {
+
+   ws.on('message', function message(data) {
+     const stringData = data.toString();
+     const jsonData = JSON.parse(stringData);
+     if ('gameId' in jsonData && 'clientId' in jsonData) {
+       const gameId = jsonData['gameId'];
+       const clientId = jsonData['clientId'];
+       const tank = tanksServer.getPlayerForGame(gameId, clientId);
+       if (tank) {
+         if (tank.connection === null) {
+           tank.connection = ws;
+         }
+         if ('action' in jsonData) {
+           tank.step(jsonData['action']);
+         }
+      }
+     }
+   });
+
+});
+
+
+// server game loop
+// every 100 ms send game state to clients
+setInterval(function() {
+  Object.values(tanksServer.games).forEach((game) => {
+    game.step();
+  })
+}, 100)
