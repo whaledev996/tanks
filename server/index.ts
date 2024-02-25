@@ -11,6 +11,7 @@ interface TanksServerState {
 class Tank {
 
   id: string;
+  sequence: number;
   obj: Object3D;
   movementSpeed: number;
   rotationSpeed: number;
@@ -22,6 +23,7 @@ class Tank {
     this.rotationSpeed = 0.03;
     this.connection = null;
     this.id = id;
+    this.sequence = 0;
   }
 
   step(action: Action) {
@@ -73,7 +75,7 @@ class Game {
   serialize(): GameState {
     const state = {}
     Object.values(this.tanks).forEach((tank) => {
-      state[tank.id] = {position: [tank.obj.position.x, tank.obj.position.y, tank.obj.position.z], rotation: tank.obj.rotation.z}
+      state[tank.id] = {position: [tank.obj.position.x, tank.obj.position.y, tank.obj.position.z], rotation: tank.obj.rotation.z, sequence: tank.sequence}
     })
     return state;
   }
@@ -181,9 +183,11 @@ wss.on('connection', function connection(ws) {
    ws.on('message', function message(data) {
      const stringData = data.toString();
      const jsonData = JSON.parse(stringData);
-     if ('gameId' in jsonData && 'clientId' in jsonData) {
+     console.log(jsonData);
+     if ('gameId' in jsonData && 'clientId' in jsonData && 'sequence' in jsonData) {
        const gameId = jsonData['gameId'];
        const clientId = jsonData['clientId'];
+       const sequence = jsonData['sequence'];
        const tank = tanksServer.getPlayerForGame(gameId, clientId);
        if (tank) {
          if (tank.connection === null) {
@@ -191,6 +195,10 @@ wss.on('connection', function connection(ws) {
          }
          if ('action' in jsonData) {
            tank.step(jsonData['action']);
+           console.log(`received sequence ${sequence}`)
+           if (sequence > tank.sequence) {
+             tank.sequence = sequence;
+           }
          }
       }
      }
@@ -201,6 +209,7 @@ wss.on('connection', function connection(ws) {
 
 // server game loop
 // every 100 ms send game state to clients
+// SERVER_TIME_STEP = 100
 setInterval(function() {
   Object.values(tanksServer.games).forEach((game) => {
     game.step();

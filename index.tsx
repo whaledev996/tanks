@@ -1,9 +1,16 @@
 import { Canvas, useLoader, useThree, useFrame } from "@react-three/fiber";
 import { createRoot } from "react-dom/client";
+import { forwardRef } from "react";
 import { TextureLoader } from "three/src/loaders/TextureLoader";
-import { Mesh } from "three";
+import { Mesh, Object3D, Vector3Tuple } from "three";
 import React, { useEffect, useState, useRef } from "react";
-import { GameState, TankState } from "./types";
+import {
+  Action,
+  ClientAction,
+  ClientActions,
+  GameState,
+  TankState,
+} from "./types";
 
 function App() {
   const [gameId, setGameId] = useState("");
@@ -54,7 +61,21 @@ function App() {
         {" "}
         join game{" "}
       </button>
-      {gameId && clientId && <Game gameId={gameId} clientId={clientId} />}
+      {gameId && clientId && (
+        <div style={{ width: window.innerWidth, height: window.innerHeight }}>
+          <Canvas
+            camera={{
+              fov: 50,
+              aspect: window.innerWidth / window.innerHeight,
+              near: 0.1,
+              far: 1000,
+              position: [0, -10, 25],
+            }}
+          >
+            <Game gameId={gameId} clientId={clientId} />
+          </Canvas>
+        </div>
+      )}
     </div>
   );
 }
@@ -68,13 +89,71 @@ function Game(props: GameProps) {
   const [otherTank, setOtherTank] = useState<TankState>({
     position: [0, 0, 0],
     rotation: 0,
+    sequence: 0,
   });
+  const movementSpeed = 0.05;
+  const rotationSpeed = 0.03;
+
+  const meshRef = useRef<Mesh>(null);
+
+  // a list of unacknowledged actions?
+  const actions = useRef<ClientAction[]>([]);
+  const sequence = useRef<number>(0);
+  const keysPressed = useMovement();
+
+  // initialize sequence number
+  // if (actions.current === null) {
+  // actions.current = { actions: [], sequence: 0 };
+  // actions.current = [];
+  //}
   function processGameState(gameState: GameState): any {
-    console.log("processing game state");
+    // console.log("processing game state");
     for (const [clientId, tankState] of Object.entries(gameState)) {
       if (clientId === props.clientId) {
         // this current client
         // reconcile this tanks position
+        // compute theoretical state of this tank
+        // get position from tank state
+        // get sequence from tank state
+        // purge client actions array
+        const dummyObj = new Object3D();
+        const serverPosition = tankState.position;
+        // dummyObj.position.x = tankState.position.x;
+        dummyObj.position.set(
+          serverPosition[0],
+          serverPosition[1],
+          serverPosition[2]
+        );
+        const serverSequence = tankState.sequence;
+        console.log(tankState);
+        console.log(actions.current);
+        actions.current = actions.current.filter(
+          (clientAction) => clientAction.sequence > serverSequence
+        );
+        actions.current.forEach((clientAction) => {
+          if (clientAction.action === "w") {
+            dummyObj.translateY(movementSpeed);
+          }
+          if (clientAction.action === "s") {
+            dummyObj.translateY(-1 * movementSpeed);
+          }
+          if (clientAction.action === "a") {
+            dummyObj.rotateZ(rotationSpeed);
+          }
+          if (clientAction.action === "d") {
+            dummyObj.rotateZ(-1 * rotationSpeed);
+          }
+          // literally update position to theoretical position
+          // meshRef.position.set
+          // meshRef.current.position.
+          if (meshRef.current) {
+            meshRef.current.position.set(
+              dummyObj.position.x,
+              dummyObj.position.y,
+              dummyObj.position.z
+            );
+          }
+        });
       } else {
         // this is another client
         setOtherTank(tankState);
@@ -82,32 +161,64 @@ function Game(props: GameProps) {
     }
   }
   const sendMessage = useSocket(processGameState);
+
+  function sendToClient(action: Action) {
+    //const sequence = actions.current.length
+    //  ? actions.current[actions.current.length - 1].sequence + 1
+    //  : 1;
+    sequence.current += 1;
+    sendMessage(
+      JSON.stringify({
+        action: action,
+        clientId: props.clientId,
+        gameId: props.gameId,
+        sequence: sequence.current,
+      }),
+      () => {
+        //const sequence = actions.current[actions.current.length
+        actions.current.push({ action: action, sequence: sequence.current });
+      }
+    );
+  }
+
+  useFrame((state, delta, xrFrame) => {
+    // This function runs at the native refresh rate inside of a shared render-loop
+    const mesh = meshRef.current;
+    if (mesh) {
+      if (keysPressed.has("w")) {
+        mesh.translateY(movementSpeed);
+        sendToClient("w");
+      }
+      if (keysPressed.has("s")) {
+        mesh.translateY(-1 * movementSpeed);
+        sendToClient("s");
+      }
+      if (keysPressed.has("a")) {
+        mesh.rotateZ(rotationSpeed);
+        sendToClient("a");
+      }
+      if (keysPressed.has("d")) {
+        mesh.rotateZ(-1 * rotationSpeed);
+        sendToClient("d");
+      }
+    }
+  });
+
   return (
-    <div style={{ width: window.innerWidth, height: window.innerHeight }}>
-      <Canvas
-        camera={{
-          fov: 50,
-          aspect: window.innerWidth / window.innerHeight,
-          near: 0.1,
-          far: 1000,
-          position: [0, -10, 25],
-        }}
-      >
-        <Light />
-        <Box />
-        {otherTank && (
-          <OtherTank
-            rotation={otherTank.rotation}
-            position={otherTank.position}
-          />
-        )}
-        <Tank
-          clientId={props.clientId}
-          gameId={props.gameId}
-          send={sendMessage}
+    <>
+      <Light />
+      <Box />
+      {otherTank && (
+        <OtherTank
+          rotation={otherTank.rotation}
+          position={otherTank.position}
         />
-      </Canvas>
-    </div>
+      )}
+      <mesh ref={meshRef}>
+        <boxGeometry args={[1, 1, 0.5]} />
+        <meshBasicMaterial args={[{ color: 0x4287f5 }]} />
+      </mesh>
+    </>
   );
 }
 
@@ -130,13 +241,13 @@ function Box() {
   );
 }
 
-interface TankProps {
-  send: (message: any, callback: any) => void;
-  gameId: string;
-  clientId: string;
-}
+//interface TankProps {
+//  send: (action: Action) => void;
+//  gameId: string;
+//  clientId: string;
+//}
 
-function OtherTank(props: TankState) {
+function OtherTank(props: { position: Vector3Tuple; rotation: number }) {
   const meshRef = useRef<Mesh>(null);
 
   return (
@@ -155,47 +266,43 @@ function OtherTank(props: TankState) {
   );
 }
 
-function Tank(props: TankProps) {
-  const movementSpeed = 0.05;
-  const rotationSpeed = 0.03;
-  const keysPressed = useMovement();
-  const meshRef = useRef<Mesh>(null);
-
-  useFrame((state, delta, xrFrame) => {
-    // This function runs at the native refresh rate inside of a shared render-loop
-    const mesh = meshRef.current;
-    if (mesh) {
-      let state: any = { clientId: props.clientId, gameId: props.gameId };
-      if (keysPressed.has("w")) {
-        state.action = "w";
-        mesh.translateY(movementSpeed);
-        props.send(JSON.stringify(state), undefined);
-      }
-      if (keysPressed.has("s")) {
-        mesh.translateY(-1 * movementSpeed);
-        state.action = "s";
-        props.send(JSON.stringify(state), undefined);
-        console.log(mesh.position);
-      }
-      if (keysPressed.has("a")) {
-        mesh.rotateZ(rotationSpeed);
-        state.action = "a";
-        props.send(JSON.stringify(state), undefined);
-      }
-      if (keysPressed.has("d")) {
-        state.action = "d";
-        mesh.rotateZ(-1 * rotationSpeed);
-        props.send(JSON.stringify(state), undefined);
-      }
-    }
-  });
-  return (
-    <mesh ref={meshRef}>
-      <boxGeometry args={[1, 1, 0.5]} />
-      <meshBasicMaterial args={[{ color: 0x4287f5 }]} />
-    </mesh>
-  );
-}
+//const Tank = forwardRef<Mesh, TankProps>(function (props, ref) {
+//  const movementSpeed = 0.05;
+//  const rotationSpeed = 0.03;
+//  const keysPressed = useMovement();
+//  // const meshRef = useRef<Mesh>(null);
+//
+//  useFrame((state, delta, xrFrame) => {
+//    // This function runs at the native refresh rate inside of a shared render-loop
+//    if (ref) {
+//      const mesh = ref.current;
+//      if (mesh) {
+//        if (keysPressed.has("w")) {
+//          mesh.translateY(movementSpeed);
+//          props.send("w");
+//        }
+//        if (keysPressed.has("s")) {
+//          mesh.translateY(-1 * movementSpeed);
+//          props.send("s");
+//        }
+//        if (keysPressed.has("a")) {
+//          mesh.rotateZ(rotationSpeed);
+//          props.send("a");
+//        }
+//        if (keysPressed.has("d")) {
+//          mesh.rotateZ(-1 * rotationSpeed);
+//          props.send("d");
+//        }
+//      }
+//    }
+//  });
+//  return (
+//    <mesh ref={ref}>
+//      <boxGeometry args={[1, 1, 0.5]} />
+//      <meshBasicMaterial args={[{ color: 0x4287f5 }]} />
+//    </mesh>
+//  );
+//});
 
 function useSocket(callback: (obj: any) => void) {
   const ws = useRef<WebSocket | null>(null);
