@@ -18,13 +18,19 @@ export interface Client {
 }
 
 export interface ClientAction {
-  action: Action;
+  action: string[];
   sequence: number;
 }
 
 export interface ClientActions {
   actions: Action[];
   sequence: number;
+}
+
+export interface Projectile {
+  target: Vector3Tuple;
+  position: Vector3Tuple;
+  id: string;
 }
 
 // each Game, Tank has an id

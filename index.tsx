@@ -2,15 +2,31 @@ import { Canvas, useLoader, useThree, useFrame } from "@react-three/fiber";
 import { createRoot } from "react-dom/client";
 import { forwardRef } from "react";
 import { TextureLoader } from "three/src/loaders/TextureLoader";
-import { Mesh, Object3D, Vector3Tuple } from "three";
+import {
+  Box3,
+  CapsuleGeometry,
+  Matrix4,
+  Mesh,
+  MeshBasicMaterial,
+  Object3D,
+  Vector3,
+  Vector3Tuple,
+} from "three";
 import React, { useEffect, useState, useRef } from "react";
 import {
   Action,
   ClientAction,
   ClientActions,
   GameState,
+  Projectile,
   TankState,
 } from "./types";
+
+function generateUniqueId() {
+  const timestamp = Date.now().toString(36); // Convert timestamp to base36 string
+  const randomString = Math.random().toString(36).substr(2, 5); // Generate random string
+  return timestamp + randomString; // Concatenate timestamp and random string
+}
 
 function App() {
   const [gameId, setGameId] = useState("");
@@ -91,15 +107,84 @@ function Game(props: GameProps) {
     rotation: 0,
     sequence: 0,
   });
-  const movementSpeed = 0.05;
-  const rotationSpeed = 0.03;
+  const [projectiles, setProjectiles] = useState<Projectile[]>([]);
+  const movementSpeed = 2;
+  const rotationSpeed = 2;
 
   const meshRef = useRef<Mesh>(null);
 
   // a list of unacknowledged actions?
-  const actions = useRef<ClientAction[]>([]);
+  const clientActions = useRef<ClientAction[]>([]);
+  const serverState = useRef<TankState>({
+    position: [0, 0, 0],
+    sequence: 0,
+    rotation: 0,
+  });
+
+  const state = useThree();
+
   const sequence = useRef<number>(0);
+  //const vec = useRef<Vector3>(new Vector3(0, 0, 0));
+  //const pos = useRef<Vector3>(new Vector3(0, 0, 0));
   const keysPressed = useMovement();
+
+  function handleMouseDown(e: MouseEvent) {
+    console.log(state.pointer);
+    var vec = new Vector3(); // create once and reuse
+    var pos = new Vector3(); // create once and reuse
+    const projectileGeometry = new CapsuleGeometry(0.2, 0.3, 4, 8);
+    projectileGeometry.applyMatrix4(new Matrix4().makeRotationX(Math.PI / 2));
+    const projectileMaterial = new MeshBasicMaterial({ color: 0xffffff });
+    const projectile = new Mesh(projectileGeometry, projectileMaterial);
+    //const projectileBox = new Box3().setFromObject(projectile);
+    vec.set(state.pointer.x, state.pointer.y, 0.5);
+    console.log(vec);
+    vec.unproject(state.camera);
+    vec.sub(state.camera.position).normalize();
+    var distance = -state.camera.position.z / vec.z;
+    pos.copy(state.camera.position).add(vec.multiplyScalar(distance));
+    //console.log(`CAMERA`);
+    //console.log(state.camera.position);
+    //console.log(`VECTOR`);
+    //console.log(vec);
+    //console.log(`DISTANCE`);
+    //console.log(distance);
+    //console.log(`POS`);
+    //console.log(pos);
+    const mesh = meshRef.current;
+    projectile.position.x = mesh?.position.x || 0;
+    projectile.position.y = mesh?.position.y || 0;
+    projectile.position.z = mesh?.position.z || 0;
+    projectile.lookAt(pos);
+    console.log("ADDING OBJ");
+    //state.scene.add(projectile);
+    //console.log(projectiles);
+    setProjectiles([
+      ...projectiles,
+      {
+        target: [pos.x, pos.y, pos.z],
+        position: [
+          mesh?.position.x || 0,
+          mesh?.position.y || 0,
+          mesh?.position.z || 0,
+        ],
+        id: generateUniqueId(),
+      },
+    ]);
+  }
+
+  useEffect(() => {
+    state.camera.lookAt(0, 0, 0);
+  });
+
+  useEffect(() => {
+    window.addEventListener("mousedown", handleMouseDown);
+
+    return () => {
+      console.log("removing something");
+      window.removeEventListener("mousedown", handleMouseDown);
+    };
+  }, [state.scene, projectiles]);
 
   // initialize sequence number
   // if (actions.current === null) {
@@ -110,50 +195,51 @@ function Game(props: GameProps) {
     // console.log("processing game state");
     for (const [clientId, tankState] of Object.entries(gameState)) {
       if (clientId === props.clientId) {
+        serverState.current = tankState;
         // this current client
         // reconcile this tanks position
         // compute theoretical state of this tank
         // get position from tank state
         // get sequence from tank state
         // purge client actions array
-        const dummyObj = new Object3D();
-        const serverPosition = tankState.position;
+        //const dummyObj = new Object3D();
+        //const serverPosition = tankState.position;
         // dummyObj.position.x = tankState.position.x;
-        dummyObj.position.set(
-          serverPosition[0],
-          serverPosition[1],
-          serverPosition[2]
-        );
-        const serverSequence = tankState.sequence;
-        console.log(tankState);
-        console.log(actions.current);
-        actions.current = actions.current.filter(
-          (clientAction) => clientAction.sequence > serverSequence
-        );
-        actions.current.forEach((clientAction) => {
-          if (clientAction.action === "w") {
-            dummyObj.translateY(movementSpeed);
-          }
-          if (clientAction.action === "s") {
-            dummyObj.translateY(-1 * movementSpeed);
-          }
-          if (clientAction.action === "a") {
-            dummyObj.rotateZ(rotationSpeed);
-          }
-          if (clientAction.action === "d") {
-            dummyObj.rotateZ(-1 * rotationSpeed);
-          }
-          // literally update position to theoretical position
-          // meshRef.position.set
-          // meshRef.current.position.
-          if (meshRef.current) {
-            meshRef.current.position.set(
-              dummyObj.position.x,
-              dummyObj.position.y,
-              dummyObj.position.z
-            );
-          }
-        });
+        //dummyObj.position.set(
+        //  serverPosition[0],
+        //  serverPosition[1],
+        //  serverPosition[2]
+        //);
+        //const serverSequence = tankState.sequence;
+        //console.log(tankState);
+        //console.log(actions.current);
+        //actions.current = actions.current.filter(
+        //  (clientAction) => clientAction.sequence > serverSequence
+        //);
+        //actions.current.forEach((clientAction) => {
+        //  if (clientAction.action.includes("w")) {
+        //    dummyObj.translateY(movementSpeed);
+        //  }
+        //  if (clientAction.action.includes("s")) {
+        //    dummyObj.translateY(-1 * movementSpeed);
+        //  }
+        //  if (clientAction.action === "a") {
+        //    dummyObj.rotateZ(rotationSpeed);
+        //  }
+        //  if (clientAction.action === "d") {
+        //    dummyObj.rotateZ(-1 * rotationSpeed);
+        //  }
+        //  // literally update position to theoretical position
+        //  // meshRef.position.set
+        //  // meshRef.current.position.
+        //  //if (meshRef.current) {
+        //  //  meshRef.current.position.set(
+        //  //    dummyObj.position.x,
+        //  //    dummyObj.position.y,
+        //  //    dummyObj.position.z
+        //  //  );
+        //  //}
+        //});
       } else {
         // this is another client
         setOtherTank(tankState);
@@ -162,7 +248,7 @@ function Game(props: GameProps) {
   }
   const sendMessage = useSocket(processGameState);
 
-  function sendToClient(action: Action) {
+  function sendToClient(action: string[]) {
     //const sequence = actions.current.length
     //  ? actions.current[actions.current.length - 1].sequence + 1
     //  : 1;
@@ -176,32 +262,105 @@ function Game(props: GameProps) {
       }),
       () => {
         //const sequence = actions.current[actions.current.length
-        actions.current.push({ action: action, sequence: sequence.current });
+        //actions.current.push({ action: action, sequence: sequence.current });
+        if (action.length) {
+          clientActions.current.push({ action: action, sequence: Date.now() });
+        }
       }
     );
   }
 
+  function serverReconcilation(delta) {
+    if (serverState.current && clientActions.current.length) {
+      // filter out all client actions that occurred before
+      // clientActions.current = clientActions.current.filter(
+      //   (clientAction) => clientAction.sequence > serverState.current?.sequence
+      // );
+      // play back all existing clientActions on the serverState to get the new state
+      //console.log(`received ${serverState.current.position} as server object`);
+      const dummyObj = new Object3D();
+      dummyObj.position.x = serverState.current.position[0];
+      dummyObj.position.y = serverState.current.position[1];
+      dummyObj.position.z = serverState.current.position[2];
+      dummyObj.rotation.z = serverState.current.rotation;
+      const newClientActions: ClientAction[] = [];
+      clientActions.current.forEach((clientAction) => {
+        if (clientAction.sequence > serverState.current.sequence) {
+          const inputs = clientAction.action;
+          if (inputs.includes("w")) {
+            dummyObj.translateY(movementSpeed * delta);
+          }
+          if (inputs.includes("s")) {
+            dummyObj.translateY(-1 * movementSpeed * delta);
+          }
+          if (inputs.includes("a")) {
+            dummyObj.rotateZ(rotationSpeed * delta);
+          }
+          if (inputs.includes("d")) {
+            dummyObj.rotateZ(-1 * rotationSpeed * delta);
+          }
+          newClientActions.push(clientAction);
+        }
+      });
+      if (meshRef.current) {
+        console.log(
+          `adjusting client position [${meshRef.current.position.x}, ${meshRef.current.position.y}, ${meshRef.current.position.z}] to [${dummyObj.position.x}, ${dummyObj.position.y}, ${dummyObj.position.z}]`
+        );
+        //meshRef.current.position.x = dummyObj.position.x;
+        //meshRef.current.position.y = dummyObj.position.y;
+        //meshRef.current.position.z = dummyObj.position.z;
+        meshRef.current.position.set(
+          dummyObj.position.x,
+          dummyObj.position.y,
+          dummyObj.position.z
+        );
+        meshRef.current.rotation.set(
+          meshRef.current.rotation.x,
+          meshRef.current.rotation.y,
+          dummyObj.rotation.z
+        );
+      }
+      clientActions.current = newClientActions;
+    }
+  }
+
   useFrame((state, delta, xrFrame) => {
     // This function runs at the native refresh rate inside of a shared render-loop
+    //console.log(`delta: ${delta}`);
+    // movement speed
     const mesh = meshRef.current;
     if (mesh) {
       if (keysPressed.has("w")) {
-        mesh.translateY(movementSpeed);
-        sendToClient("w");
+        mesh.translateY(movementSpeed * delta);
+        //sendToClient("w");
       }
       if (keysPressed.has("s")) {
-        mesh.translateY(-1 * movementSpeed);
-        sendToClient("s");
+        mesh.translateY(-1 * movementSpeed * delta);
+        //sendToClient("s");
       }
       if (keysPressed.has("a")) {
-        mesh.rotateZ(rotationSpeed);
-        sendToClient("a");
+        mesh.rotateZ(rotationSpeed * delta);
+        //sendToClient("a");
       }
       if (keysPressed.has("d")) {
-        mesh.rotateZ(-1 * rotationSpeed);
-        sendToClient("d");
+        mesh.rotateZ(-1 * rotationSpeed * delta);
+        //sendToClient("d");
       }
+      sendToClient(Array.from(keysPressed));
+      serverReconcilation(delta);
     }
+  });
+
+  const projectileList = projectiles.map((p) => {
+    console.log(projectiles);
+    return (
+      <Projectile
+        key={p.id}
+        target={p.target}
+        id={p.id}
+        position={p.position}
+      />
+    );
   });
 
   return (
@@ -214,6 +373,7 @@ function Game(props: GameProps) {
           position={otherTank.position}
         />
       )}
+      {projectileList}
       <mesh ref={meshRef}>
         <boxGeometry args={[1, 1, 0.5]} />
         <meshBasicMaterial args={[{ color: 0x4287f5 }]} />
@@ -241,6 +401,37 @@ function Box() {
   );
 }
 
+function Projectile(props: Projectile) {
+  const meshRef = useRef<Mesh>(null);
+  const capsuleRef = useRef<CapsuleGeometry>(null);
+
+  useEffect(() => {
+    if (capsuleRef.current) {
+      console.log("running capsule apply matrix on init");
+      capsuleRef.current.applyMatrix4(new Matrix4().makeRotationX(Math.PI / 2));
+    }
+    if (meshRef.current) {
+      console.log("running projectile look at on init");
+      meshRef.current.lookAt(props.target[0], props.target[1], props.target[2]);
+    }
+  }, []);
+
+  useFrame((state, delta, xrFrame) => {
+    if (meshRef.current) {
+      meshRef.current.translateZ(2 * delta);
+    }
+  });
+
+  return (
+    <mesh
+      position={[props.position[0], props.position[1], props.position[2]]}
+      ref={meshRef}
+    >
+      <capsuleGeometry ref={capsuleRef} args={[0.2, 0.3, 4, 8]} />
+    </mesh>
+  );
+}
+
 //interface TankProps {
 //  send: (action: Action) => void;
 //  gameId: string;
@@ -250,16 +441,31 @@ function Box() {
 function OtherTank(props: { position: Vector3Tuple; rotation: number }) {
   const meshRef = useRef<Mesh>(null);
 
+  // given current ps and future pos, how do we get movement?
+  //
+  // meshRef.current.trans
+  //
+  //  useFrame((state, delta, xrFrame) => {
+  useFrame((state, delta, xrFrame) => {
+    if (meshRef.current) {
+      meshRef.current.position.lerp(
+        new Vector3(props.position[0], props.position[1], props.position[2]),
+        0.05
+      );
+      const newRotation =
+        meshRef.current.rotation.z +
+        (props.rotation - meshRef.current.rotation.z) * 0.05;
+
+      meshRef.current.rotation.set(
+        meshRef.current.rotation.x,
+        meshRef.current.rotation.y,
+        newRotation
+      );
+    }
+  });
+
   return (
-    <mesh
-      ref={meshRef}
-      position={props.position}
-      rotation={[
-        meshRef.current?.rotation.x || 0,
-        meshRef.current?.rotation.y || 0,
-        props.rotation,
-      ]}
-    >
+    <mesh ref={meshRef}>
       <boxGeometry args={[1, 1, 0.5]} />
       <meshBasicMaterial args={[{ color: "red" }]} />
     </mesh>
@@ -339,8 +545,8 @@ function useSocket(callback: (obj: any) => void) {
   return send;
 }
 
-function useMovement() {
-  const [keysPressed, setKeysPressed] = useState(new Set());
+function useMovement(): Set<string> {
+  const [keysPressed, setKeysPressed] = useState(new Set<string>());
   const allowedKeys = new Set(["w", "a", "s", "d"]);
 
   function handleKeyUp(e: KeyboardEvent) {
@@ -354,7 +560,6 @@ function useMovement() {
   }
 
   function handleKeyDown(e: KeyboardEvent) {
-    console.log("handling");
     const key = e.key;
     if (allowedKeys.has(key)) {
       setKeysPressed((keys) => {

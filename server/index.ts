@@ -16,45 +16,49 @@ class Tank {
   movementSpeed: number;
   rotationSpeed: number;
   connection: any;
+  delta: number;
+  keysPressed: string[];
 
   constructor(id: string) {
     this.obj = new Object3D();
-    this.movementSpeed = 0.05;
-    this.rotationSpeed = 0.03;
+    this.movementSpeed = 2;
+    this.rotationSpeed = 2;
     this.connection = null;
     this.id = id;
     this.sequence = 0;
+    this.delta = 1 / 60;
+    this.keysPressed = [];
   }
 
-  step(action: Action) {
-    if (action === "w") {
+  step() {
+    if (this.keysPressed.includes("w")) {
       this.moveForward();
     } 
-    if (action === "a") {
+    if (this.keysPressed.includes("a")) {
       this.rotateLeft();
     }
-    if (action === "s") {
+    if (this.keysPressed.includes("s")) {
       this.moveBackward();
     } 
-    if (action === "d") {
+    if (this.keysPressed.includes("d")) {
       this.rotateRight();
     }
   }
 
   moveForward() {
-    this.obj.translateY(this.movementSpeed);
+    this.obj.translateY(this.movementSpeed * this.delta);
   }
 
   moveBackward() {
-    this.obj.translateY(-1 * this.movementSpeed);
+    this.obj.translateY(-1 * this.movementSpeed * this.delta);
   }
 
   rotateLeft() {
-    this.obj.rotateZ(this.rotationSpeed)
+    this.obj.rotateZ(this.rotationSpeed * this.delta)
   }
 
   rotateRight() {
-    this.obj.rotateZ(-1 * this.rotationSpeed)
+    this.obj.rotateZ(-1 * this.rotationSpeed * this.delta)
   }
 }
 
@@ -75,7 +79,7 @@ class Game {
   serialize(): GameState {
     const state = {}
     Object.values(this.tanks).forEach((tank) => {
-      state[tank.id] = {position: [tank.obj.position.x, tank.obj.position.y, tank.obj.position.z], rotation: tank.obj.rotation.z, sequence: tank.sequence}
+      state[tank.id] = {position: [tank.obj.position.x, tank.obj.position.y, tank.obj.position.z], rotation: tank.obj.rotation.z, sequence: Date.now()}
     })
     return state;
   }
@@ -153,7 +157,7 @@ app.get('/api/test', (_, res) =>
 
 app.post('/create', (req, res) => {
   const client = tanksServer.createGame();
-  console.log(tanksServer.serialize())
+  //console.log(tanksServer.serialize())
   res.json(client);
 });
 
@@ -161,7 +165,7 @@ app.post('/join', (req, res) => {
   if (req.body.gameId) {
     const gameId = req.body.gameId;
     const client = tanksServer.joinGame(gameId);
-    console.log(tanksServer.serialize())
+    //console.log(tanksServer.serialize())
     if (client) {
       res.json(client);
     } else {
@@ -183,7 +187,7 @@ wss.on('connection', function connection(ws) {
    ws.on('message', function message(data) {
      const stringData = data.toString();
      const jsonData = JSON.parse(stringData);
-     console.log(jsonData);
+     //console.log(jsonData);
      if ('gameId' in jsonData && 'clientId' in jsonData && 'sequence' in jsonData) {
        const gameId = jsonData['gameId'];
        const clientId = jsonData['clientId'];
@@ -194,8 +198,9 @@ wss.on('connection', function connection(ws) {
            tank.connection = ws;
          }
          if ('action' in jsonData) {
-           tank.step(jsonData['action']);
-           console.log(`received sequence ${sequence}`)
+           // tank.step(jsonData['action']);
+           tank.keysPressed = jsonData['action'];
+           //console.log(`received sequence ${sequence}`)
            if (sequence > tank.sequence) {
              tank.sequence = sequence;
            }
@@ -206,12 +211,26 @@ wss.on('connection', function connection(ws) {
 
 });
 
-
 // server game loop
+// 60 fps game loop to calculate physics
+//setInterval(function() {
+
+
+//}, 1000 / 60)
+
+
 // every 100 ms send game state to clients
-// SERVER_TIME_STEP = 100
+let tick = 0;
 setInterval(function() {
+  tick++;
   Object.values(tanksServer.games).forEach((game) => {
-    game.step();
+    if (tick % 4 == 0) {
+      game.step();
+    }
+    Object.values(game.tanks).forEach((tank) => {
+      tank.step();
+      console.log(tank.obj.position);
+      //console.log(tank.
+    });
   })
-}, 100)
+}, 1000 / 60)

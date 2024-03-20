@@ -139,6 +139,7 @@ window.addEventListener("mousedown", (event) => {
     -(event.clientY / window.innerHeight) * 2 + 1,
     0.5,
   );
+  console.log(vec);
 
   vec.unproject(camera);
 
@@ -147,6 +148,14 @@ window.addEventListener("mousedown", (event) => {
   var distance = -camera.position.z / vec.z;
 
   pos.copy(camera.position).add(vec.multiplyScalar(distance));
+  console.log(`CAMERA`);
+  console.log(camera.position);
+  console.log(`VECTOR`);
+  console.log(vec);
+  console.log(`DISTANCE`);
+  console.log(distance);
+  console.log(`POS`);
+  console.log(pos);
   projectile.position.x = player.mesh.position.x;
   projectile.position.y = player.mesh.position.y;
   projectile.position.z = player.mesh.position.z;
