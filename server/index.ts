@@ -157,7 +157,7 @@ app.get('/api/test', (_, res) =>
 
 app.post('/create', (req, res) => {
   const client = tanksServer.createGame();
-  //console.log(tanksServer.serialize())
+  //////console.log(tanksServer.serialize())
   res.json(client);
 });
 
@@ -165,7 +165,7 @@ app.post('/join', (req, res) => {
   if (req.body.gameId) {
     const gameId = req.body.gameId;
     const client = tanksServer.joinGame(gameId);
-    //console.log(tanksServer.serialize())
+    ////console.log(tanksServer.serialize())
     if (client) {
       res.json(client);
     } else {
@@ -176,7 +176,7 @@ app.post('/join', (req, res) => {
 
 if (!process.env['VITE']) {
   app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
+    //console.log(`Example app listening on port ${port}`)
   });
 }
 
@@ -187,7 +187,7 @@ wss.on('connection', function connection(ws) {
    ws.on('message', function message(data) {
      const stringData = data.toString();
      const jsonData = JSON.parse(stringData);
-     //console.log(jsonData);
+     //////console.log(jsonData);
      if ('gameId' in jsonData && 'clientId' in jsonData && 'sequence' in jsonData) {
        const gameId = jsonData['gameId'];
        const clientId = jsonData['clientId'];
@@ -200,7 +200,7 @@ wss.on('connection', function connection(ws) {
          if ('action' in jsonData) {
            // tank.step(jsonData['action']);
            tank.keysPressed = jsonData['action'];
-           //console.log(`received sequence ${sequence}`)
+           ////console.log(`received sequence ${sequence}`)
            if (sequence > tank.sequence) {
              tank.sequence = sequence;
            }
@@ -224,12 +224,12 @@ let tick = 0;
 setInterval(function() {
   tick++;
   Object.values(tanksServer.games).forEach((game) => {
-    if (tick % 4 == 0) {
+    if (tick % 10 == 0) {
       game.step();
     }
     Object.values(game.tanks).forEach((tank) => {
       tank.step();
-      console.log(tank.obj.position);
+      //console.log(tank.obj.position);
       //console.log(tank.
     });
   })

@@ -2,15 +2,21 @@ import { Canvas, useLoader, useThree, useFrame } from "@react-three/fiber";
 import { createRoot } from "react-dom/client";
 import { forwardRef } from "react";
 import { TextureLoader } from "three/src/loaders/TextureLoader";
+import { ColladaLoader } from "three/examples/jsm/loaders/ColladaLoader";
+import { GUI } from "dat.gui";
 import {
   Box3,
   CapsuleGeometry,
+  DirectionalLight,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
   Object3D,
+  SpotLight,
+  Texture,
   Vector3,
   Vector3Tuple,
+  sRGBEncoding,
 } from "three";
 import React, { useEffect, useState, useRef } from "react";
 import {
@@ -78,14 +84,26 @@ function App() {
         join game{" "}
       </button>
       {gameId && clientId && (
-        <div style={{ width: window.innerWidth, height: window.innerHeight }}>
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            margin: "auto",
+            width: 1000,
+            height: 500,
+            backgroundImage: "wood.png",
+          }}
+        >
           <Canvas
             camera={{
               fov: 50,
-              aspect: window.innerWidth / window.innerHeight,
+              aspect: 2,
               near: 0.1,
               far: 1000,
-              position: [0, -10, 25],
+              position: [0, -5, 25],
             }}
           >
             <Game gameId={gameId} clientId={clientId} />
@@ -102,6 +120,27 @@ interface GameProps {
 }
 
 function Game(props: GameProps) {
+  const modelRef = useRef();
+  // Load Collada model
+  useEffect(() => {
+    const loader = new ColladaLoader();
+    loader.load("Tanks/tnk_tank_p.dae", (collada) => {
+      modelRef.current = collada.scene;
+      modelRef.current.scale.set(0.5, 0.5, 0.5);
+      modelRef.current.rotation.set(Math.PI / 2, 0, 0);
+      // Access vertex groups
+      modelRef.current.traverse((child) => {
+        if (child instanceof Mesh) {
+          // Assuming the vertex groups are stored in userData
+          const vertexGroups = child.userData.vertexGroups;
+          if (vertexGroups) {
+            console.log("Vertex groups:", vertexGroups);
+          }
+        }
+      });
+    });
+  }, []);
+
   const [otherTank, setOtherTank] = useState<TankState>({
     position: [0, 0, 0],
     rotation: 0,
@@ -110,8 +149,10 @@ function Game(props: GameProps) {
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
   const movementSpeed = 2;
   const rotationSpeed = 2;
+  const woodMap = useLoader(TextureLoader, "wood.png");
 
   const meshRef = useRef<Mesh>(null);
+  const boxRef = useRef<Mesh>(null);
 
   // a list of unacknowledged actions?
   const clientActions = useRef<ClientAction[]>([]);
@@ -124,58 +165,45 @@ function Game(props: GameProps) {
   const state = useThree();
 
   const sequence = useRef<number>(0);
-  //const vec = useRef<Vector3>(new Vector3(0, 0, 0));
-  //const pos = useRef<Vector3>(new Vector3(0, 0, 0));
+  const vec = useRef<Vector3>(new Vector3(0, 0, 0));
+  const pos = useRef<Vector3>(new Vector3(0, 0, 0));
   const keysPressed = useMovement();
 
+  const test1 = useRef<Box3>(new Box3());
+  const test2 = useRef<Box3>(new Box3());
+  const test3 = useRef<Object3D>(new Object3D());
+
   function handleMouseDown(e: MouseEvent) {
-    console.log(state.pointer);
-    var vec = new Vector3(); // create once and reuse
-    var pos = new Vector3(); // create once and reuse
-    const projectileGeometry = new CapsuleGeometry(0.2, 0.3, 4, 8);
-    projectileGeometry.applyMatrix4(new Matrix4().makeRotationX(Math.PI / 2));
-    const projectileMaterial = new MeshBasicMaterial({ color: 0xffffff });
-    const projectile = new Mesh(projectileGeometry, projectileMaterial);
-    //const projectileBox = new Box3().setFromObject(projectile);
-    vec.set(state.pointer.x, state.pointer.y, 0.5);
-    console.log(vec);
-    vec.unproject(state.camera);
-    vec.sub(state.camera.position).normalize();
-    var distance = -state.camera.position.z / vec.z;
-    pos.copy(state.camera.position).add(vec.multiplyScalar(distance));
-    //console.log(`CAMERA`);
-    //console.log(state.camera.position);
-    //console.log(`VECTOR`);
-    //console.log(vec);
-    //console.log(`DISTANCE`);
-    //console.log(distance);
-    //console.log(`POS`);
-    //console.log(pos);
+    vec.current.set(state.pointer.x, state.pointer.y, 0.5);
+    vec.current.unproject(state.camera);
+    vec.current.sub(state.camera.position).normalize();
+    var distance = -state.camera.position.z / vec.current.z;
+    pos.current
+      .copy(state.camera.position)
+      .add(vec.current.multiplyScalar(distance));
     const mesh = meshRef.current;
-    projectile.position.x = mesh?.position.x || 0;
-    projectile.position.y = mesh?.position.y || 0;
-    projectile.position.z = mesh?.position.z || 0;
-    projectile.lookAt(pos);
-    console.log("ADDING OBJ");
-    //state.scene.add(projectile);
-    //console.log(projectiles);
     setProjectiles([
       ...projectiles,
       {
-        target: [pos.x, pos.y, pos.z],
+        target: [pos.current.x, pos.current.y, pos.current.z],
         position: [
           mesh?.position.x || 0,
           mesh?.position.y || 0,
           mesh?.position.z || 0,
         ],
         id: generateUniqueId(),
+        direction: 1,
       },
     ]);
   }
 
   useEffect(() => {
     state.camera.lookAt(0, 0, 0);
-  });
+    //state.scene.background = woodMap;
+    if (boxRef.current) {
+      test2.current.setFromObject(boxRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     window.addEventListener("mousedown", handleMouseDown);
@@ -184,7 +212,7 @@ function Game(props: GameProps) {
       console.log("removing something");
       window.removeEventListener("mousedown", handleMouseDown);
     };
-  }, [state.scene, projectiles]);
+  }, [projectiles]);
 
   // initialize sequence number
   // if (actions.current === null) {
@@ -324,18 +352,62 @@ function Game(props: GameProps) {
     }
   }
 
+  const checkIntersection = function (player: Object3D): boolean {
+    test1.current.setFromObject(player);
+    console.log(test1.current);
+    console.log(test2.current);
+    return test1.current.intersectsBox(test2.current);
+    //console.log(test1.current);
+    //return mesh.some((o) => {
+    //  //test2.current.setFromObject(o);
+    //  test2.current = new Box3().setFromObject(o);
+    //  console.log(test2.current);
+    //  return (
+    //    o !== player &&
+    //    o.geometry.type === "BoxGeometry" &&
+    //    test1.current.intersectsBox(test2.current)
+    //  );
+    //});
+    //test1.current.setFromObject(player);
+    //console.log(test1.current);
+  };
+
   useFrame((state, delta, xrFrame) => {
     // This function runs at the native refresh rate inside of a shared render-loop
     //console.log(`delta: ${delta}`);
     // movement speed
     const mesh = meshRef.current;
+    const fake = test3.current;
     if (mesh) {
+      //handle collisions
+      //console.log(state.scene.children);
+      //console.log(fake.position.y);
+      //console.log(boxRef.current?.position.y);
       if (keysPressed.has("w")) {
-        mesh.translateY(movementSpeed * delta);
+        fake.translateY(movementSpeed * delta);
+        // if we intersect
+        if (checkIntersection(fake)) {
+          //console.log(intersects);
+          //mesh.translateY(-1 * movementSpeed * delta);
+          fake.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
+        } else {
+          mesh.translateY(movementSpeed * delta);
+        }
+        //const intersects = checkIntersection(
+        //  mesh,
+        //  state.scene.children.filter((c) => c.type === "Mesh") as Mesh[]
+        //);
         //sendToClient("w");
       }
       if (keysPressed.has("s")) {
         mesh.translateY(-1 * movementSpeed * delta);
+        const intersects = checkIntersection(
+          mesh,
+          state.scene.children.filter((c) => c.type === "Mesh") as Mesh[]
+        );
+        if (intersects) {
+          mesh.translateY(movementSpeed * delta);
+        }
         //sendToClient("s");
       }
       if (keysPressed.has("a")) {
@@ -347,7 +419,7 @@ function Game(props: GameProps) {
         //sendToClient("d");
       }
       sendToClient(Array.from(keysPressed));
-      serverReconcilation(delta);
+      //serverReconcilation(delta);
     }
   });
 
@@ -359,20 +431,23 @@ function Game(props: GameProps) {
         target={p.target}
         id={p.id}
         position={p.position}
+        direction={p.direction}
       />
     );
   });
 
   return (
     <>
+      <Background />
       <Light />
-      <Box />
-      {otherTank && (
+      <Box ref={boxRef} />
+      {otherTank.sequence !== 0 && (
         <OtherTank
           rotation={otherTank.rotation}
           position={otherTank.position}
         />
       )}
+      {modelRef.current && <primitive object={modelRef.current} />}
       {projectileList}
       <mesh ref={meshRef}>
         <boxGeometry args={[1, 1, 0.5]} />
@@ -382,24 +457,47 @@ function Game(props: GameProps) {
   );
 }
 
-function Light() {
+const Background = () => {
+  const texture = useLoader(TextureLoader, "wood.png");
+  texture.encoding = sRGBEncoding;
+
   return (
-    <hemisphereLight position={[0, 0, 0]} args={[0xffffff, 0xffffff, 1]} />
+    <mesh position={[0, 0, 0]}>
+      <planeGeometry args={[40, 20, 1]} />
+      <meshStandardMaterial map={texture} />
+    </mesh>
+  );
+};
+
+function Light() {
+  const ref = useRef<DirectionalLight>(null);
+  useEffect(() => {
+    const gui = new GUI();
+    if (ref.current) {
+      gui.add(ref.current, "intensity", 0, 1000);
+      //gui.addColor(ref.current, "color");
+      gui.add(ref.current.position, "x", -100, 100).name("X Position");
+      gui.add(ref.current.position, "y", -100, 100).name("Y Position");
+      gui.add(ref.current.position, "z", -100, 100).name("Z Position");
+    }
+    return () => {
+      gui.destroy();
+    };
+  }, []);
+  return (
+    <directionalLight ref={ref} position={[0, -3, 10]} args={[0xffffff, 2]} />
   );
 }
 
-function Box() {
-  const woodMap = useLoader(
-    TextureLoader,
-    "compressed-but-large-wood-texture.jpg"
-  );
-  return (
-    <mesh position={[0, 8, 2]}>
-      <boxGeometry args={[20, 2, 4]} />
-      <meshStandardMaterial map={woodMap} />
-    </mesh>
-  );
-}
+//function Light() {
+//  return <ambientLight args={[0x404040, 5]} />;
+//}
+
+//function Light() {
+//  return (
+//    <hemisphereLight position={[0, 0, 0]} args={[0xffffff, 0xffffff, 1]} />
+//  );
+//}
 
 function Projectile(props: Projectile) {
   const meshRef = useRef<Mesh>(null);
@@ -418,7 +516,7 @@ function Projectile(props: Projectile) {
 
   useFrame((state, delta, xrFrame) => {
     if (meshRef.current) {
-      meshRef.current.translateZ(2 * delta);
+      meshRef.current.translateZ(2 * delta * props.direction);
     }
   });
 
@@ -471,6 +569,19 @@ function OtherTank(props: { position: Vector3Tuple; rotation: number }) {
     </mesh>
   );
 }
+
+const Box = forwardRef<Mesh>(function (props, ref) {
+  const woodMap = useLoader(
+    TextureLoader,
+    "compressed-but-large-wood-texture.jpg"
+  );
+  return (
+    <mesh ref={ref} position={[0, 10, 2]}>
+      <boxGeometry args={[10, 2, 2]} />
+      <meshStandardMaterial map={woodMap} />
+    </mesh>
+  );
+});
 
 //const Tank = forwardRef<Mesh, TankProps>(function (props, ref) {
 //  const movementSpeed = 0.05;

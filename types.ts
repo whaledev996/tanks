@@ -28,6 +28,7 @@ export interface ClientActions {
 }
 
 export interface Projectile {
+  direction: number;
   target: Vector3Tuple;
   position: Vector3Tuple;
   id: string;
