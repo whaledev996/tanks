@@ -11,9 +11,7 @@
 	</asset>
 	<library_images>
 		<image id="tank_blue-image" name="tank_blue">
-			<init_from>
-				<ref>./textures/player/tank_blue.png</ref>
-			</init_from>
+			<init_from><ref>./textures/player/tank_blue.png</ref></init_from>
 		</image>
 		<image id="tank_shadow-image" name="tank_shadow">
 			<init_from>
@@ -39,9 +37,7 @@
 			<profile_COMMON>
 				<newparam sid="tank_blue-surface">
 					<surface type="2D">
-						<init_from>
-							<ref>tank_blue-image</ref>
-						</init_from>
+						<init_from><ref>tank_blue-image</ref></init_from>
 					</surface>
 				</newparam>
 				<newparam sid="tank_blue-sampler">
@@ -67,9 +63,7 @@
 			<profile_COMMON>
 				<newparam sid="tank_shadow-surface">
 					<surface type="2D">
-						<init_from>
-							<ref>tank_shadow-image</ref>
-						</init_from>
+						<init_from><ref>tank_shadow-image</ref></init_from>
 					</surface>
 				</newparam>
 				<newparam sid="tank_shadow-sampler">
@@ -290,7 +284,7 @@
 					<translate>11 0 0</translate>
 				</node>
 			</node>
-			<node id="polygon0" name="polygon0" type="NODE">
+			<!-- <node id="polygon0" name="polygon0" type="NODE">
 				<instance_controller url="#polygon0_Controller">
 					<skeleton>#base</skeleton>
 					<bind_material>
@@ -301,7 +295,7 @@
 						</technique_common>
 					</bind_material>
 				</instance_controller>
-			</node>
+			</node> -->
 			<node id="polygon1" name="polygon1" type="NODE">
 				<instance_controller url="#polygon1_Controller">
 					<skeleton>#base</skeleton>

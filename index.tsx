@@ -125,19 +125,20 @@ function Game(props: GameProps) {
   useEffect(() => {
     const loader = new ColladaLoader();
     loader.load("Tanks/tnk_tank_p.dae", (collada) => {
+      console.log(collada);
       modelRef.current = collada.scene;
-      modelRef.current.scale.set(0.5, 0.5, 0.5);
+      modelRef.current.scale.set(0.1, 0.1, 0.1);
       modelRef.current.rotation.set(Math.PI / 2, 0, 0);
       // Access vertex groups
-      modelRef.current.traverse((child) => {
-        if (child instanceof Mesh) {
-          // Assuming the vertex groups are stored in userData
-          const vertexGroups = child.userData.vertexGroups;
-          if (vertexGroups) {
-            console.log("Vertex groups:", vertexGroups);
-          }
-        }
-      });
+      //modelRef.current.traverse((child) => {
+      //  if (child instanceof Mesh) {
+      //    // Assuming the vertex groups are stored in userData
+      //    const vertexGroups = child.userData.vertexGroups;
+      //    if (vertexGroups) {
+      //      console.log("Vertex groups:", vertexGroups);
+      //    }
+      //  }
+      //});
     });
   }, []);
 
