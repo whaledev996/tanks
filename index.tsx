@@ -121,6 +121,8 @@ interface GameProps {
 
 function Game(props: GameProps) {
   const modelRef = useRef();
+  const baseRef = useRef();
+  const turretRef = useRef();
   // Load Collada model
   useEffect(() => {
     const loader = new ColladaLoader();
@@ -129,6 +131,16 @@ function Game(props: GameProps) {
       modelRef.current = collada.scene;
       modelRef.current.scale.set(0.1, 0.1, 0.1);
       modelRef.current.rotation.set(Math.PI / 2, 0, 0);
+      baseRef.current = modelRef.current.children[1].skeleton.bones[0];
+      // baseRef.current.rotation.set(Math.PI / 2, 0, 0);
+      turretRef.current = modelRef.current.children[1].skeleton.bones[1];
+      //baseRef.current.rotation.set(0, 0, Math.PI / 2);
+      // baseRef.current.applyMatrix4(new Matrix4().makeRotationZ(Math.PI / 2));
+      baseRef.current.rotation.reorder("YXZ");
+      console.log(baseRef.current);
+      //baseRef.current.applyMatrix4(new Matrix4().makeRotationX(Math.PI));
+      //baseRef.current.applyMatrix4(new Matrix4().makeRotationY(Math.PI));
+      console.log(turretRef.current);
       // Access vertex groups
       //modelRef.current.traverse((child) => {
       //  if (child instanceof Mesh) {
@@ -148,7 +160,7 @@ function Game(props: GameProps) {
     sequence: 0,
   });
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
-  const movementSpeed = 2;
+  const movementSpeed = 30;
   const rotationSpeed = 2;
   const woodMap = useLoader(TextureLoader, "wood.png");
 
@@ -173,6 +185,27 @@ function Game(props: GameProps) {
   const test1 = useRef<Box3>(new Box3());
   const test2 = useRef<Box3>(new Box3());
   const test3 = useRef<Object3D>(new Object3D());
+
+  function handleMouseMove(e: MouseEvent) {
+    vec.current.set(state.pointer.x, state.pointer.y, 0.5);
+    vec.current.unproject(state.camera);
+    vec.current.sub(state.camera.position).normalize();
+    var distance = -state.camera.position.z / vec.current.z;
+    pos.current
+      .copy(state.camera.position)
+      .add(vec.current.multiplyScalar(distance));
+    console.log(pos.current);
+    if (turretRef.current) {
+      // temporary hack to prevent cannon from flipping over
+      const old = turretRef.current.rotation.z;
+      turretRef.current.lookAt(pos.current.x, pos.current.y, 1);
+      turretRef.current.rotation.set(
+        turretRef.current.rotation.x,
+        turretRef.current.rotation.y,
+        old
+      );
+    }
+  }
 
   function handleMouseDown(e: MouseEvent) {
     vec.current.set(state.pointer.x, state.pointer.y, 0.5);
@@ -208,10 +241,12 @@ function Game(props: GameProps) {
 
   useEffect(() => {
     window.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousemove", handleMouseMove);
 
     return () => {
       console.log("removing something");
       window.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mousemove", handleMouseMove);
     };
   }, [projectiles]);
 
@@ -377,22 +412,24 @@ function Game(props: GameProps) {
     // This function runs at the native refresh rate inside of a shared render-loop
     //console.log(`delta: ${delta}`);
     // movement speed
-    const mesh = meshRef.current;
+    // const mesh = meshRef.current;
     const fake = test3.current;
-    if (mesh) {
+    if (true) {
       //handle collisions
       //console.log(state.scene.children);
       //console.log(fake.position.y);
       //console.log(boxRef.current?.position.y);
+      //console.log(baseRef.current.position);
       if (keysPressed.has("w")) {
+        baseRef.current.translateZ(movementSpeed * delta);
         fake.translateY(movementSpeed * delta);
         // if we intersect
         if (checkIntersection(fake)) {
           //console.log(intersects);
           //mesh.translateY(-1 * movementSpeed * delta);
-          fake.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
+          // fake.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
         } else {
-          mesh.translateY(movementSpeed * delta);
+          // mesh.translateY(movementSpeed * delta);
         }
         //const intersects = checkIntersection(
         //  mesh,
@@ -401,23 +438,37 @@ function Game(props: GameProps) {
         //sendToClient("w");
       }
       if (keysPressed.has("s")) {
-        mesh.translateY(-1 * movementSpeed * delta);
-        const intersects = checkIntersection(
-          mesh,
-          state.scene.children.filter((c) => c.type === "Mesh") as Mesh[]
-        );
-        if (intersects) {
-          mesh.translateY(movementSpeed * delta);
+        fake.translateY(-1 * movementSpeed * delta);
+        baseRef.current.translateZ(-1 * movementSpeed * delta);
+        // if we intersect
+        if (checkIntersection(fake)) {
+          //console.log(intersects);
+          //mesh.translateY(-1 * movementSpeed * delta);
+          // fake.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
+        } else {
+          // mesh.translateY(-1 * movementSpeed * delta);
         }
+        // mesh.translateY(-1 * movementSpeed * delta);
+        // const intersects = checkIntersection(
+        //   mesh,
+        //   state.scene.children.filter((c) => c.type === "Mesh") as Mesh[]
+        // );
+        // if (intersects) {
+        //   mesh.translateY(movementSpeed * delta);
+        //   baseRef.current.translateZ(movementSpeed * delta);
+        // }
         //sendToClient("s");
       }
       if (keysPressed.has("a")) {
-        mesh.rotateZ(rotationSpeed * delta);
+        // mesh.rotateZ(rotationSpeed * delta);
         //sendToClient("a");
+        baseRef.current.rotateX(rotationSpeed * delta);
+        // turretRef.current.rotateX(rotationSpeed * delta);
       }
       if (keysPressed.has("d")) {
-        mesh.rotateZ(-1 * rotationSpeed * delta);
+        // mesh.rotateZ(-1 * rotationSpeed * delta);
         //sendToClient("d");
+        baseRef.current.rotateX(-1 * rotationSpeed * delta);
       }
       sendToClient(Array.from(keysPressed));
       //serverReconcilation(delta);
@@ -450,10 +501,10 @@ function Game(props: GameProps) {
       )}
       {modelRef.current && <primitive object={modelRef.current} />}
       {projectileList}
-      <mesh ref={meshRef}>
-        <boxGeometry args={[1, 1, 0.5]} />
-        <meshBasicMaterial args={[{ color: 0x4287f5 }]} />
-      </mesh>
+      {/*<mesh ref={meshRef}>*/}
+      {/*<boxGeometry args={[1, 1, 0.5]} />*/}
+      {/*<meshBasicMaterial args={[{ color: 0x4287f5 }]} />*/}
+      {/*</mesh>*/}
     </>
   );
 }
