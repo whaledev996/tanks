@@ -11,7 +11,9 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  MirroredRepeatWrapping,
   Object3D,
+  RepeatWrapping,
   SpotLight,
   Texture,
   Vector3,
@@ -92,15 +94,14 @@ function App() {
             top: 0,
             bottom: 0,
             margin: "auto",
-            width: 1000,
-            height: 500,
-            backgroundImage: "wood.png",
+            width: window.innerWidth,
+            height: window.innerHeight,
           }}
         >
           <Canvas
             camera={{
-              fov: 50,
-              aspect: 2,
+              fov: 60,
+              aspect: window.innerWidth / window.innerWidth,
               near: 0.1,
               far: 1000,
               position: [0, -5, 25],
@@ -512,10 +513,13 @@ function Game(props: GameProps) {
 const Background = () => {
   const texture = useLoader(TextureLoader, "wood.png");
   texture.encoding = sRGBEncoding;
+  texture.wrapS = MirroredRepeatWrapping;
+  texture.wrapT = MirroredRepeatWrapping;
+  texture.repeat.set(4, 4);
 
   return (
     <mesh position={[0, 0, 0]}>
-      <planeGeometry args={[40, 20, 1]} />
+      <planeGeometry args={[90, 54, 1]} />
       <meshStandardMaterial map={texture} />
     </mesh>
   );
@@ -627,9 +631,12 @@ const Box = forwardRef<Mesh>(function (props, ref) {
     TextureLoader,
     "compressed-but-large-wood-texture.jpg"
   );
+  //woodMap.wrapS = MirroredRepeatWrapping;
+  //woodMap.wrapT = MirroredRepeatWrapping;
+  //woodMap.repeat.set(4, 1);
   return (
-    <mesh ref={ref} position={[0, 10, 2]}>
-      <boxGeometry args={[10, 2, 2]} />
+    <mesh ref={ref} position={[0, 12, 2]}>
+      <boxGeometry args={[5, 1, 2]} />
       <meshStandardMaterial map={woodMap} />
     </mesh>
   );
