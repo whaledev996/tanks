@@ -6,6 +6,7 @@ import { ColladaLoader } from "three/examples/jsm/loaders/ColladaLoader";
 import { GUI } from "dat.gui";
 import {
   Box3,
+  BoxGeometry,
   CapsuleGeometry,
   DirectionalLight,
   Matrix4,
@@ -139,6 +140,7 @@ function Game(props: GameProps) {
       // baseRef.current.applyMatrix4(new Matrix4().makeRotationZ(Math.PI / 2));
       // baseRef.current.rotation.reorder("YXZ");
       modelRef.current.rotation.reorder("YXZ");
+      console.log(modelRef.current);
       console.log(baseRef.current);
       //baseRef.current.applyMatrix4(new Matrix4().makeRotationX(Math.PI));
       //baseRef.current.applyMatrix4(new Matrix4().makeRotationY(Math.PI));
@@ -186,7 +188,7 @@ function Game(props: GameProps) {
 
   const test1 = useRef<Box3>(new Box3());
   const test2 = useRef<Box3>(new Box3());
-  const test3 = useRef<Object3D>(new Object3D());
+  const test3 = useRef<Mesh | null>(null);
 
   function handleMouseMove(e: MouseEvent) {
     vec.current.set(state.pointer.x, state.pointer.y, 0.5);
@@ -217,11 +219,8 @@ function Game(props: GameProps) {
       .copy(state.camera.position)
       .add(vec.current.multiplyScalar(distance));
     const mesh = meshRef.current;
-    console.log(turretRef.current.position)
-    console.log(modelRef.current.position)
     const test = new Vector3();
     turretRef.current.getWorldPosition(test);
-    console.log(test);
     setProjectiles([
       ...projectiles,
       {
@@ -243,6 +242,8 @@ function Game(props: GameProps) {
     //state.scene.background = woodMap;
     if (boxRef.current) {
       test2.current.setFromObject(boxRef.current);
+      test3.current = new Mesh(new BoxGeometry(), new MeshBasicMaterial());
+      test3.current.rotateZ(Math.PI);
     }
   }, []);
 
@@ -251,7 +252,6 @@ function Game(props: GameProps) {
     window.addEventListener("mousemove", handleMouseMove);
 
     return () => {
-      console.log("removing something");
       window.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mousemove", handleMouseMove);
     };
@@ -396,9 +396,11 @@ function Game(props: GameProps) {
   }
 
   const checkIntersection = function (player: Object3D): boolean {
+    console.log("running checkIntersection");
     test1.current.setFromObject(player);
-    // console.log(test1.current);
-    // console.log(test2.current);
+    test1.current.expandByObject(modelRef.current);
+    console.log(test1.current);
+    console.log(test2.current);
     return test1.current.intersectsBox(test2.current);
     //console.log(test1.current);
     //return mesh.some((o) => {
@@ -428,16 +430,16 @@ function Game(props: GameProps) {
       //console.log(boxRef.current?.position.y);
       //console.log(baseRef.current.position);
       if (keysPressed.has("w")) {
-        console.log(baseRef.current.position);
-        console.log(turretRef.current.position);
-        modelRef.current.translateZ(movementSpeed * delta);
         fake.translateY(movementSpeed * delta);
         // if we intersect
-        if (checkIntersection(fake)) {
+        const doesIntersect = checkIntersection(fake);
+        console.log(doesIntersect);
+        if (doesIntersect) {
           //console.log(intersects);
           //mesh.translateY(-1 * movementSpeed * delta);
-          // fake.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
+          fake.position.set(modelRef.current.position.x, modelRef.current.position.y, modelRef.current.position.z);
         } else {
+          modelRef.current.translateZ(movementSpeed * delta);
           // mesh.translateY(movementSpeed * delta);
         }
         //const intersects = checkIntersection(
@@ -447,10 +449,6 @@ function Game(props: GameProps) {
         //sendToClient("w");
       }
       if (keysPressed.has("s")) {
-        console.log(baseRef.current.position);
-        console.log(turretRef.current.position);
-        console.log(modelRef.current.children[1].position);
-        console.log(modelRef.current);
         fake.translateY(-1 * movementSpeed * delta);
         modelRef.current.translateZ(-1 * movementSpeed * delta);
         // if we intersect
@@ -473,12 +471,14 @@ function Game(props: GameProps) {
         //sendToClient("s");
       }
       if (keysPressed.has("a")) {
+        fake.rotateZ(rotationSpeed * delta);
         // mesh.rotateZ(rotationSpeed * delta);
         //sendToClient("a");
         modelRef.current.rotateY(rotationSpeed * delta);
         // turretRef.current.rotateX(rotationSpeed * delta);
       }
       if (keysPressed.has("d")) {
+        fake.rotateZ(-1 * rotationSpeed * delta);
         // mesh.rotateZ(-1 * rotationSpeed * delta);
         //sendToClient("d");
         modelRef.current.rotateY(-1 * rotationSpeed * delta);
@@ -648,8 +648,8 @@ const Box = forwardRef<Mesh>(function (props, ref) {
   //woodMap.wrapT = MirroredRepeatWrapping;
   //woodMap.repeat.set(4, 1);
   return (
-    <mesh ref={ref} position={[0, 12, 2]}>
-      <boxGeometry args={[5, 1, 2]} />
+    <mesh ref={ref} position={[0, 12, 0]}>
+      <boxGeometry args={[5, 1, 4]} />
       <meshStandardMaterial map={woodMap} />
     </mesh>
   );
