@@ -125,12 +125,15 @@ function Game(props: GameProps) {
   const modelRef = useRef();
   const baseRef = useRef();
   const turretRef = useRef();
+  const something = new Vector3();
+  const fakeRef = useRef();
   // Load Collada model
   useEffect(() => {
     const loader = new ColladaLoader();
     loader.load("Tanks/tnk_tank_p.dae", (collada) => {
       console.log(collada);
       modelRef.current = collada.scene;
+      console.log(modelRef.current);
       modelRef.current.scale.set(0.1, 0.1, 0.1);
       modelRef.current.rotation.set(Math.PI / 2, 0, 0);
       baseRef.current = modelRef.current.children[1].skeleton.bones[0];
@@ -139,12 +142,16 @@ function Game(props: GameProps) {
       //baseRef.current.rotation.set(0, 0, Math.PI / 2);
       // baseRef.current.applyMatrix4(new Matrix4().makeRotationZ(Math.PI / 2));
       // baseRef.current.rotation.reorder("YXZ");
-      modelRef.current.rotation.reorder("YXZ");
-      console.log(modelRef.current);
+      // modelRef.current.rotation.reorder("XYZ");
+      let measure = new Box3().setFromObject(modelRef.current);
+      measure.getSize(something);
+      console.log(something);
       console.log(baseRef.current);
       //baseRef.current.applyMatrix4(new Matrix4().makeRotationX(Math.PI));
       //baseRef.current.applyMatrix4(new Matrix4().makeRotationY(Math.PI));
       console.log(turretRef.current);
+      fakeRef.current = modelRef.current.clone();
+      fakeRef.current.scale.set(1, 1, 1);
       // Access vertex groups
       //modelRef.current.traverse((child) => {
       //  if (child instanceof Mesh) {
@@ -243,6 +250,7 @@ function Game(props: GameProps) {
     if (boxRef.current) {
       test2.current.setFromObject(boxRef.current);
       test3.current = new Mesh(new BoxGeometry(), new MeshBasicMaterial());
+      // test3.current = modelRef.current.clone();
       test3.current.rotateZ(Math.PI);
     }
   }, []);
@@ -397,8 +405,16 @@ function Game(props: GameProps) {
 
   const checkIntersection = function (player: Object3D): boolean {
     console.log("running checkIntersection");
-    test1.current.setFromObject(player);
-    test1.current.expandByObject(modelRef.current);
+    console.log(player);
+    console.log(player.boundingBox);
+    console.log(player.geometry);
+    // player.scale.set(1, 1, 1);
+    test1.current.setFromObject(player, true);
+    // test1.current.expandByScalar(10);
+    const hello = new Vector3();
+    test1.current.getSize(hello);
+    console.log(hello);
+    // test1.current.expandByScalar(0.1);
     console.log(test1.current);
     console.log(test2.current);
     return test1.current.intersectsBox(test2.current);
@@ -422,15 +438,18 @@ function Game(props: GameProps) {
     //console.log(`delta: ${delta}`);
     // movement speed
     // const mesh = meshRef.current;
-    const fake = test3.current;
-    if (true) {
+    const fake = fakeRef.current;
+    if (modelRef.current && fake) {
+      // const fake = modelRef.current.clone();
       //handle collisions
       //console.log(state.scene.children);
       //console.log(fake.position.y);
       //console.log(boxRef.current?.position.y);
       //console.log(baseRef.current.position);
+      // console.log(fake.position);
+      // console.log(modelRef.current.position);
       if (keysPressed.has("w")) {
-        fake.translateY(movementSpeed * delta);
+        fake.translateZ(movementSpeed * delta);
         // if we intersect
         const doesIntersect = checkIntersection(fake);
         console.log(doesIntersect);
@@ -449,14 +468,17 @@ function Game(props: GameProps) {
         //sendToClient("w");
       }
       if (keysPressed.has("s")) {
-        fake.translateY(-1 * movementSpeed * delta);
-        modelRef.current.translateZ(-1 * movementSpeed * delta);
+        fake.translateZ(-1 * movementSpeed * delta);
         // if we intersect
-        if (checkIntersection(fake)) {
+        const doesIntersect = checkIntersection(fake);
+        console.log(doesIntersect);
+        if (doesIntersect) {
+          fake.position.set(modelRef.current.position.x, modelRef.current.position.y, modelRef.current.position.z);
           //console.log(intersects);
           //mesh.translateY(-1 * movementSpeed * delta);
           // fake.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
         } else {
+          modelRef.current.translateZ(-1 * movementSpeed * delta);
           // mesh.translateY(-1 * movementSpeed * delta);
         }
         // mesh.translateY(-1 * movementSpeed * delta);
@@ -471,14 +493,14 @@ function Game(props: GameProps) {
         //sendToClient("s");
       }
       if (keysPressed.has("a")) {
-        fake.rotateZ(rotationSpeed * delta);
+        fake.rotateY(rotationSpeed * delta);
         // mesh.rotateZ(rotationSpeed * delta);
         //sendToClient("a");
         modelRef.current.rotateY(rotationSpeed * delta);
         // turretRef.current.rotateX(rotationSpeed * delta);
       }
       if (keysPressed.has("d")) {
-        fake.rotateZ(-1 * rotationSpeed * delta);
+        fake.rotateY(-1 * rotationSpeed * delta);
         // mesh.rotateZ(-1 * rotationSpeed * delta);
         //sendToClient("d");
         modelRef.current.rotateY(-1 * rotationSpeed * delta);
