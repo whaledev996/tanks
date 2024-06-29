@@ -4,19 +4,22 @@ import { forwardRef } from "react";
 import { TextureLoader } from "three/src/loaders/TextureLoader";
 import { ColladaLoader } from "three/examples/jsm/loaders/ColladaLoader";
 import { GUI } from "dat.gui";
-import {
+import THREE, {
   Box3,
   BoxGeometry,
   CapsuleGeometry,
   DirectionalLight,
+  Euler,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
   MirroredRepeatWrapping,
   Object3D,
-  RepeatWrapping,
+  Quaternion,
+  Raycaster,
   SpotLight,
   Texture,
+  Vector2,
   Vector3,
   Vector3Tuple,
   sRGBEncoding,
@@ -45,7 +48,7 @@ function App() {
       <button
         onClick={async () => {
           try {
-            const response = await fetch("http://127.0.0.1:5173/create", {
+            const response = await fetch("http://localhost:5173/create", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -67,7 +70,7 @@ function App() {
         onClick={async () => {
           try {
             let promptedGameId = prompt("Enter game id");
-            const response = await fetch("http://127.0.0.1:5173/join", {
+            const response = await fetch("http://localhost:5173/join", {
               method: "POST",
               body: JSON.stringify({ gameId: promptedGameId }),
               headers: {
@@ -130,15 +133,19 @@ function Game(props: GameProps) {
   // Load Collada model
   useEffect(() => {
     const loader = new ColladaLoader();
-    loader.load("Tanks/tnk_tank_p.dae", (collada) => {
+    loader.load("Tanks/another_another_test.dae", (collada) => {
       console.log(collada);
       modelRef.current = collada.scene;
       console.log(modelRef.current);
       modelRef.current.scale.set(0.1, 0.1, 0.1);
       modelRef.current.rotation.set(Math.PI / 2, 0, 0);
-      baseRef.current = modelRef.current.children[1].skeleton.bones[0];
+      //modelRef.current.up.set(0, 0, 1);
+      baseRef.current =
+        modelRef.current.children[0].children[1].skeleton.bones[0];
       // baseRef.current.rotation.set(Math.PI / 2, 0, 0);
-      turretRef.current = modelRef.current.children[1].skeleton.bones[1];
+      turretRef.current =
+        modelRef.current.children[0].children[1].skeleton.bones[1];
+      // turretRef.current.up.set(0, 0, 1);
       //baseRef.current.rotation.set(0, 0, Math.PI / 2);
       // baseRef.current.applyMatrix4(new Matrix4().makeRotationZ(Math.PI / 2));
       // baseRef.current.rotation.reorder("YXZ");
@@ -205,15 +212,87 @@ function Game(props: GameProps) {
     pos.current
       .copy(state.camera.position)
       .add(vec.current.multiplyScalar(distance));
+    const other = new Vector3();
+    const another = new Vector3();
+    // const q = new Quaternion();
+    modelRef.current.getWorldDirection(other);
+    console.log("CURRENT POS");
+    console.log(pos.current);
+    turretRef.current.getWorldDirection(another);
+    // test.normalize();
+    console.log("turret current world rotation");
+    console.log(another);
+    console.log("model current y rotation");
+    //console.log(modelRef.current.rotation);
+    console.log(other);
+
+    //console.log("turret updated y rotation");
+    //turretRef.current.setRotationFromAxisAngle(
+    //  new Vector3(0, 1, 0),
+    //  modelRef.current.rotation.y
+    //);
+    //console.log(turretRef.current.rotation.y);
+
     if (turretRef.current) {
       // temporary hack to prevent cannon from flipping over
       const old = turretRef.current.rotation.z;
-      turretRef.current.lookAt(pos.current.x, pos.current.y, 1);
-      turretRef.current.rotation.set(
-        turretRef.current.rotation.x,
-        turretRef.current.rotation.y,
-        old
+      const old2 = turretRef.current.rotation.x;
+      const newPos = pos.current.clone();
+      const worldPos = new Vector3();
+      modelRef.current.getWorldPosition(worldPos);
+      console.log(worldPos);
+      newPos.x = newPos.x + -1 * worldPos.x;
+      newPos.y = newPos.y + -1 * worldPos.y;
+      another.normalize();
+      newPos.normalize();
+      // // pos.current.normalize();
+      const newR = Math.acos(newPos.dot(another));
+      console.log("current angle between mouse and turret arm");
+      console.log(newR);
+
+      const crossVector = new Vector3();
+      crossVector.crossVectors(
+        new Vector3(another.x, another.y, 0),
+        new Vector3(newPos.x, newPos.y, 0)
       );
+      if (!isNaN(newR)) {
+        if (crossVector.z >= 0) {
+          // console.log("left");
+          turretRef.current.rotateY(newR);
+        } else {
+          // console.log("right");
+          turretRef.current.rotateY(-1 * newR);
+        }
+      }
+
+      // const angle = Math.atan(pos.current.x, pos.current.y);
+      // const qx = 0;
+      // const qy = Math.sin(angle / 2);
+      // const qz = 0;
+      // const w = Math.cos(angle / 2);
+      //const q = new Quaternion();
+      // turretRef.current.setRotationFromQuaternion(q);
+      // q.setFromEuler(new Euler(0, newR + Math.PI / 2, 0));
+      // if (pos.current.y >= 0) {
+      //q.setFromAxisAngle(new Vector3(0, 1, 0), newR);
+      // turretRef.current.quaternion.premultiply(q);
+      //}
+      // console.log(newR);
+      //console.log(turretRef.current.rotation.y);
+      //turretRef.current.rotation.y = newR;
+      //turretRef.current.rotation.y = 2 * Math.PI;
+      // if (pos.x < 0) {
+      //   turretRef.current.rotation.y = newR - Math.PI / 2;
+      // } else {
+      //   turretRef.current.rotation.y = newR;
+      // }
+      // turretRef.current.lookAt(pos.current.x, pos.current.y, 0);
+      // turretRef.current.rotation.z = old;
+      //turretRef.current.rotation.x = old2;
+      // turretRef.current.matrixWorld.elements[8] = newPos.x;
+      // turretRef.current.matrixWorld.elements[9] = newPos.y;
+      // turretRef.current.updateWorldMatrix();
+      //turretRef.current.rotation.set(old2, turretRef.current.rotation.y, 0);
     }
   }
 
@@ -236,7 +315,7 @@ function Game(props: GameProps) {
           test.x || 0,
           test.y || 0,
           // test.z || 0,
-          0
+          0,
         ],
         id: generateUniqueId(),
         direction: 1,
@@ -456,7 +535,11 @@ function Game(props: GameProps) {
         if (doesIntersect) {
           //console.log(intersects);
           //mesh.translateY(-1 * movementSpeed * delta);
-          fake.position.set(modelRef.current.position.x, modelRef.current.position.y, modelRef.current.position.z);
+          fake.position.set(
+            modelRef.current.position.x,
+            modelRef.current.position.y,
+            modelRef.current.position.z
+          );
         } else {
           modelRef.current.translateZ(movementSpeed * delta);
           // mesh.translateY(movementSpeed * delta);
@@ -473,7 +556,11 @@ function Game(props: GameProps) {
         const doesIntersect = checkIntersection(fake);
         console.log(doesIntersect);
         if (doesIntersect) {
-          fake.position.set(modelRef.current.position.x, modelRef.current.position.y, modelRef.current.position.z);
+          fake.position.set(
+            modelRef.current.position.x,
+            modelRef.current.position.y,
+            modelRef.current.position.z
+          );
           //console.log(intersects);
           //mesh.translateY(-1 * movementSpeed * delta);
           // fake.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
@@ -497,6 +584,7 @@ function Game(props: GameProps) {
         // mesh.rotateZ(rotationSpeed * delta);
         //sendToClient("a");
         modelRef.current.rotateY(rotationSpeed * delta);
+        // turretRef.current.rotateY(rotationSpeed * delta);
         // turretRef.current.rotateX(rotationSpeed * delta);
       }
       if (keysPressed.has("d")) {
@@ -504,6 +592,20 @@ function Game(props: GameProps) {
         // mesh.rotateZ(-1 * rotationSpeed * delta);
         //sendToClient("d");
         modelRef.current.rotateY(-1 * rotationSpeed * delta);
+        //turretRef.current.rotateY(-1 * rotationSpeed * delta);
+      }
+      if (keysPressed.has("v")) {
+        //turretRef.current.rotateX(0.02);
+        // turretRef.current.rotateOnWorldAxis(new Vector3(0, 1, 0), Math.PI / 2);
+        // turretRef.current.rotation.x += 0.02;
+        // console.log(turretRef.current.rotation);
+        const q = new Quaternion(
+          0,
+          Math.sin(Math.PI / 4),
+          0,
+          Math.cos(Math.PI / 4)
+        );
+        turretRef.current.applyQuaternion(q);
       }
       sendToClient(Array.from(keysPressed));
       //serverReconcilation(delta);
@@ -752,7 +854,7 @@ function useSocket(callback: (obj: any) => void) {
 
 function useMovement(): Set<string> {
   const [keysPressed, setKeysPressed] = useState(new Set<string>());
-  const allowedKeys = new Set(["w", "a", "s", "d"]);
+  const allowedKeys = new Set(["w", "a", "s", "d", "v"]);
 
   function handleKeyUp(e: KeyboardEvent) {
     const key = e.key;
