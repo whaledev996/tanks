@@ -6,7 +6,7 @@
 		</contributor>
 		<created>2020-10-31T17:50:37Z</created>
 		<modified>2020-10-31T17:50:37Z</modified>
-		<unit meter="0.01" name="centimeter" />
+		<unit meter="1" name="meter" />
 		<up_axis>Y_UP</up_axis>
 	</asset>
 	<library_images>

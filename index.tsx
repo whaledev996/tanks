@@ -2,10 +2,13 @@ import { Canvas, useLoader, useThree, useFrame } from "@react-three/fiber";
 import { createRoot } from "react-dom/client";
 import { forwardRef } from "react";
 import { TextureLoader } from "three/src/loaders/TextureLoader";
+//import { GLTFLoader } from "three/src/loaders/GLTF
 import { ColladaLoader } from "three/examples/jsm/loaders/ColladaLoader";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { GUI } from "dat.gui";
 import THREE, {
   Box3,
+  Box3Helper,
   BoxGeometry,
   CapsuleGeometry,
   DirectionalLight,
@@ -15,6 +18,7 @@ import THREE, {
   MeshBasicMaterial,
   MirroredRepeatWrapping,
   Object3D,
+  PlaneGeometry,
   Quaternion,
   Raycaster,
   SpotLight,
@@ -44,7 +48,7 @@ function App() {
   const [gameId, setGameId] = useState("");
   const [clientId, setClientId] = useState("");
   return (
-    <div>
+    <>
       <button
         onClick={async () => {
           try {
@@ -98,14 +102,14 @@ function App() {
             top: 0,
             bottom: 0,
             margin: "auto",
-            width: window.innerWidth,
-            height: window.innerHeight,
+            width: "100vw",
+            height: "100vh",
           }}
         >
           <Canvas
             camera={{
-              fov: 60,
-              aspect: window.innerWidth / window.innerWidth,
+              fov: 50,
+              aspect: window.innerWidth / window.innerHeight,
               near: 0.1,
               far: 1000,
               position: [0, -5, 25],
@@ -115,7 +119,7 @@ function App() {
           </Canvas>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -132,24 +136,29 @@ function Game(props: GameProps) {
   const fakeRef = useRef();
   // Load Collada model
   useEffect(() => {
-    const loader = new ColladaLoader();
-    loader.load("Tanks/another_another_test.dae", (collada) => {
+    const loader = new GLTFLoader();
+    loader.load("Tanks/tank6.glb", (collada) => {
       console.log(collada);
       modelRef.current = collada.scene;
+      const polygon = collada.scene.children[0].children[0];
       console.log(modelRef.current);
-      modelRef.current.scale.set(0.1, 0.1, 0.1);
-      modelRef.current.rotation.set(Math.PI / 2, 0, 0);
-      //modelRef.current.up.set(0, 0, 1);
-      baseRef.current =
-        modelRef.current.children[0].children[1].skeleton.bones[0];
+      modelRef.current.scale.set(5, 5, 5);
+      // const bufferGeo = collada
+      // modelRef.current.rotation.reorder("XYZ");
+      // modelRef.current.rotation.set(0, Math.PI, 0);
+      //modelRef.current.up.set(0, 1, 0);
+      // baseRef.current =
+      //   modelRef.current.children[0].children[0].skeleton.bones[0];
       // baseRef.current.rotation.set(Math.PI / 2, 0, 0);
-      turretRef.current =
-        modelRef.current.children[0].children[1].skeleton.bones[1];
+      // turretRef.current =
+      //   modelRef.current.children[0].children[0].skeleton.bones[1];
+      baseRef.current = polygon.skeleton.bones[0];
+      turretRef.current = polygon.skeleton.bones[1];
+      console.log(turretRef.current);
       // turretRef.current.up.set(0, 0, 1);
       //baseRef.current.rotation.set(0, 0, Math.PI / 2);
       // baseRef.current.applyMatrix4(new Matrix4().makeRotationZ(Math.PI / 2));
       // baseRef.current.rotation.reorder("YXZ");
-      // modelRef.current.rotation.reorder("XYZ");
       let measure = new Box3().setFromObject(modelRef.current);
       measure.getSize(something);
       console.log(something);
@@ -157,8 +166,27 @@ function Game(props: GameProps) {
       //baseRef.current.applyMatrix4(new Matrix4().makeRotationX(Math.PI));
       //baseRef.current.applyMatrix4(new Matrix4().makeRotationY(Math.PI));
       console.log(turretRef.current);
-      fakeRef.current = modelRef.current.clone();
-      fakeRef.current.scale.set(1, 1, 1);
+      //modelRef.current.position.set(0, 0, 2);
+      // fakeRef.current = modelRef.current.clone();
+      let geo = new BoxGeometry(1.005, 1.005, 0.57);
+      //let mat = new MeshBasicMaterial({ color: 0x00ff00 });
+      fakeRef.current = new Mesh(geo);
+      //fakeRef.current.scale.set(0.1, 0.1, 0.1);
+      console.log(fakeRef.current);
+      // Calculate the bounding box of the model (but no a single Mesh) so that the whole model is centered
+      let box3 = new Box3();
+      box3.expandByObject(modelRef.current);
+      console.log(box3);
+
+      // Assign the center point of the bounding box to the vector
+      let center = new Vector3();
+      box3.getCenter(center);
+      console.log(center);
+
+      // Reposition the model so that it is centered.
+      // modelRef.current.position.x = modelRef.current.position.x - center.x;
+      // modelRef.current.position.y = modelRef.current.position.y - center.y;
+      // modelRef.current.position.z = modelRef.current.position.z - center.z;
       // Access vertex groups
       //modelRef.current.traverse((child) => {
       //  if (child instanceof Mesh) {
@@ -180,7 +208,7 @@ function Game(props: GameProps) {
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
   const movementSpeed = 3;
   const rotationSpeed = 2;
-  const woodMap = useLoader(TextureLoader, "wood.png");
+  const woodMap = useLoader(TextureLoader, "wood/wood.png");
 
   const meshRef = useRef<Mesh>(null);
   const boxRef = useRef<Mesh>(null);
@@ -216,15 +244,15 @@ function Game(props: GameProps) {
     const another = new Vector3();
     // const q = new Quaternion();
     modelRef.current.getWorldDirection(other);
-    console.log("CURRENT POS");
-    console.log(pos.current);
+    //console.log("CURRENT POS");
+    //console.log(pos.current);
     turretRef.current.getWorldDirection(another);
     // test.normalize();
-    console.log("turret current world rotation");
-    console.log(another);
-    console.log("model current y rotation");
+    // console.log("turret current world rotation");
+    // console.log(another);
+    // console.log("model current y rotation");
     //console.log(modelRef.current.rotation);
-    console.log(other);
+    // console.log(other);
 
     //console.log("turret updated y rotation");
     //turretRef.current.setRotationFromAxisAngle(
@@ -240,15 +268,15 @@ function Game(props: GameProps) {
       const newPos = pos.current.clone();
       const worldPos = new Vector3();
       modelRef.current.getWorldPosition(worldPos);
-      console.log(worldPos);
+      // console.log(worldPos);
       newPos.x = newPos.x + -1 * worldPos.x;
       newPos.y = newPos.y + -1 * worldPos.y;
       another.normalize();
       newPos.normalize();
       // // pos.current.normalize();
       const newR = Math.acos(newPos.dot(another));
-      console.log("current angle between mouse and turret arm");
-      console.log(newR);
+      // console.log("current angle between mouse and turret arm");
+      // console.log(newR);
 
       const crossVector = new Vector3();
       crossVector.crossVectors(
@@ -323,6 +351,37 @@ function Game(props: GameProps) {
     ]);
   }
 
+  function handleWindowResize() {
+    //var tanFOV = Math.tan(((Math.PI / 180) * state.camera.fov) / 2);
+    //var windowHeight = window.innerHeight;
+    //state.camera.aspect = window.innerWidth / window.innerHeight;
+    //state.camera.fov =
+    //(360 / Math.PI) * Math.atan(tanFOV * (window.innerHeight / windowHeight));
+    //state.camera.updateProjectionMatrix();
+    //state.gl.setSize(window.innerWidth, window.innerHeight);
+    // let newWidth = window.innerWidth;
+    // let newHeight = window.innerHeight;
+    // if (window.innerWidth > window.innerHeight) {
+    //   newWidth = (window.innerHeight * 16) / 9;
+    // }
+    // console.log(newWidth);
+
+    //     if (window.innerHeight > window.innerWidth) {
+    //       newHeight = ()
+    //
+    //     }
+    //
+    state.camera.aspect = window.innerWidth / window.innerHeight;
+    // Adjust either FOV or zoom based on your chosen method
+    //const initialFOV = state.camera.fov;
+    //state.camera.fov = 50 / state.camera.aspect;
+    state.gl.setSize(window.innerWidth, window.innerHeight);
+    state.camera.updateProjectionMatrix();
+    state.camera.lookAt(0, 0, 0);
+    // console.log(state.camera.fov);
+    //state.camera.updateProjectionMatrix();
+  }
+
   useEffect(() => {
     state.camera.lookAt(0, 0, 0);
     //state.scene.background = woodMap;
@@ -335,8 +394,30 @@ function Game(props: GameProps) {
   }, []);
 
   useEffect(() => {
+    const gui = new GUI();
+    if (state.camera) {
+      //gui.addColor(ref.current, "color");
+      gui.add(state.camera.position, "x", -100, 100).name("X Position");
+      gui.add(state.camera.position, "y", -100, 100).name("Y Position");
+      gui.add(state.camera.position, "z", -100, 100).name("Z Position");
+      const zoomControl = gui.add(state.camera, "zoom", -100, 100).name("zoom");
+      const fovControl = gui.add(state.camera, "fov", -100, 100).name("fov");
+      fovControl.onChange(() => {
+        state.camera.updateProjectionMatrix();
+      });
+      zoomControl.onChange(() => {
+        state.camera.updateProjectionMatrix();
+      });
+    }
+    return () => {
+      gui.destroy();
+    };
+  }, []);
+
+  useEffect(() => {
     window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("resize", handleWindowResize);
 
     return () => {
       window.removeEventListener("mousedown", handleMouseDown);
@@ -484,18 +565,45 @@ function Game(props: GameProps) {
 
   const checkIntersection = function (player: Object3D): boolean {
     console.log("running checkIntersection");
-    console.log(player);
-    console.log(player.boundingBox);
-    console.log(player.geometry);
+    //console.log(player);
+    //console.log(player.boundingBox);
+    //console.log(player.geometry);
     // player.scale.set(1, 1, 1);
-    test1.current.setFromObject(player, true);
+    const pos = new Vector3();
+    turretRef.current.getWorldPosition(pos);
+    //console.log("turret Pos");
+    //console.log(pos);
+
+    const pos2 = new Vector3();
+    baseRef.current.getWorldPosition(pos2);
+    //console.log("base Pos");
+    //console.log(pos2);
+    test1.current.setFromObject(player);
     // test1.current.expandByScalar(10);
+    const another = new Box3();
+    const another2 = new Vector3();
+    // meshRef.current.getSize(another);
+    // another.setFromObject(meshRef.current);
+    //another.getSize(another2);
     const hello = new Vector3();
     test1.current.getSize(hello);
-    console.log(hello);
+    let box3 = new Box3();
+    box3.expandByObject(modelRef.current);
+    console.log(box3);
+    // console.log(another);
+    //console.log(hello);
+    // const another = new Box3(
+    //   new Vector3(
+    //     test1.current.min.x,
+    //     test1.current.min.z,
+    //     test1.current.min.y
+    //   ),
+    //   new Vector3(test1.current.max.x, test1.current.max.z, test1.current.max.y)
+    // );
     // test1.current.expandByScalar(0.1);
-    console.log(test1.current);
-    console.log(test2.current);
+    // console.log(meshRef);
+    // console.log(test1.current);
+    // console.log(test2.current);
     return test1.current.intersectsBox(test2.current);
     //console.log(test1.current);
     //return mesh.some((o) => {
@@ -528,7 +636,7 @@ function Game(props: GameProps) {
       // console.log(fake.position);
       // console.log(modelRef.current.position);
       if (keysPressed.has("w")) {
-        fake.translateZ(movementSpeed * delta);
+        fake.translateY(movementSpeed * delta);
         // if we intersect
         const doesIntersect = checkIntersection(fake);
         console.log(doesIntersect);
@@ -541,7 +649,7 @@ function Game(props: GameProps) {
             modelRef.current.position.z
           );
         } else {
-          modelRef.current.translateZ(movementSpeed * delta);
+          modelRef.current.translateY(movementSpeed * delta);
           // mesh.translateY(movementSpeed * delta);
         }
         //const intersects = checkIntersection(
@@ -551,7 +659,7 @@ function Game(props: GameProps) {
         //sendToClient("w");
       }
       if (keysPressed.has("s")) {
-        fake.translateZ(-1 * movementSpeed * delta);
+        fake.translateY(-1 * movementSpeed * delta);
         // if we intersect
         const doesIntersect = checkIntersection(fake);
         console.log(doesIntersect);
@@ -565,7 +673,7 @@ function Game(props: GameProps) {
           //mesh.translateY(-1 * movementSpeed * delta);
           // fake.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
         } else {
-          modelRef.current.translateZ(-1 * movementSpeed * delta);
+          modelRef.current.translateY(-1 * movementSpeed * delta);
           // mesh.translateY(-1 * movementSpeed * delta);
         }
         // mesh.translateY(-1 * movementSpeed * delta);
@@ -580,32 +688,51 @@ function Game(props: GameProps) {
         //sendToClient("s");
       }
       if (keysPressed.has("a")) {
-        fake.rotateY(rotationSpeed * delta);
+        fake.rotateZ(rotationSpeed * delta);
         // mesh.rotateZ(rotationSpeed * delta);
         //sendToClient("a");
-        modelRef.current.rotateY(rotationSpeed * delta);
+        modelRef.current.rotateZ(rotationSpeed * delta);
         // turretRef.current.rotateY(rotationSpeed * delta);
         // turretRef.current.rotateX(rotationSpeed * delta);
       }
       if (keysPressed.has("d")) {
-        fake.rotateY(-1 * rotationSpeed * delta);
+        fake.rotateZ(-1 * rotationSpeed * delta);
         // mesh.rotateZ(-1 * rotationSpeed * delta);
         //sendToClient("d");
-        modelRef.current.rotateY(-1 * rotationSpeed * delta);
+        modelRef.current.rotateZ(-1 * rotationSpeed * delta);
         //turretRef.current.rotateY(-1 * rotationSpeed * delta);
       }
       if (keysPressed.has("v")) {
+        let newMin = new Vector3();
+        let newMax = new Vector3();
+        let box3 = new Box3();
+        box3.expandByObject(modelRef.current);
+        console.log(box3);
+        const center = new Vector3();
+        box3.getCenter(center);
+        console.log(center);
+        newMax.x = box3.max.x;
+        newMin.x = box3.min.x;
+        newMax.y = center.y + (box3.max.z - center.z);
+        newMin.y = center.y - (box3.max.z - center.z);
+        newMax.z = center.z + (box3.max.y - center.y);
+        newMin.z = center.z - (box3.max.y - center.y);
+        const bbox = new Box3Helper(new Box3(newMin, newMax));
+        state.scene.add(bbox);
+
         //turretRef.current.rotateX(0.02);
         // turretRef.current.rotateOnWorldAxis(new Vector3(0, 1, 0), Math.PI / 2);
         // turretRef.current.rotation.x += 0.02;
         // console.log(turretRef.current.rotation);
-        const q = new Quaternion(
-          0,
-          Math.sin(Math.PI / 4),
-          0,
-          Math.cos(Math.PI / 4)
-        );
-        turretRef.current.applyQuaternion(q);
+        // const q = new Quaternion(
+        //   0,
+        //   Math.sin(Math.PI / 4),
+        //   0,
+        //   Math.cos(Math.PI / 4)
+        // );
+        // turretRef.current.applyQuaternion(q);
+        //baseRef.current.translateY(5);
+        //modelRef.current.translateZ(0.1);
       }
       sendToClient(Array.from(keysPressed));
       //serverReconcilation(delta);
@@ -638,6 +765,10 @@ function Game(props: GameProps) {
       )}
       {modelRef.current && <primitive object={modelRef.current} />}
       {projectileList}
+      <mesh position={[0, 0, 0]} ref={meshRef}>
+        <boxGeometry args={[1.005, 1.005, 0.57]} />
+        <meshBasicMaterial args={[{ color: "red" }]} />
+      </mesh>
       {/*<mesh ref={meshRef}>*/}
       {/*<boxGeometry args={[1, 1, 0.5]} />*/}
       {/*<meshBasicMaterial args={[{ color: 0x4287f5 }]} />*/}
@@ -647,15 +778,16 @@ function Game(props: GameProps) {
 }
 
 const Background = () => {
-  const texture = useLoader(TextureLoader, "wood.png");
+  const ref = useRef<PlaneGeometry>(null);
+  const texture = useLoader(TextureLoader, "wood/wood.png");
   texture.encoding = sRGBEncoding;
   texture.wrapS = MirroredRepeatWrapping;
   texture.wrapT = MirroredRepeatWrapping;
-  texture.repeat.set(4, 4);
+  texture.repeat.set(window.innerWidth / 15, window.innerHeight / 15);
 
   return (
     <mesh position={[0, 0, 0]}>
-      <planeGeometry args={[90, 54, 1]} />
+      <planeGeometry args={[window.innerWidth, window.innerHeight, 1]} />
       <meshStandardMaterial map={texture} />
     </mesh>
   );
@@ -764,16 +896,13 @@ function OtherTank(props: { position: Vector3Tuple; rotation: number }) {
 }
 
 const Box = forwardRef<Mesh>(function (props, ref) {
-  const woodMap = useLoader(
-    TextureLoader,
-    "compressed-but-large-wood-texture.jpg"
-  );
+  const woodMap = useLoader(TextureLoader, "wood/wood4.jpg");
   //woodMap.wrapS = MirroredRepeatWrapping;
   //woodMap.wrapT = MirroredRepeatWrapping;
   //woodMap.repeat.set(4, 1);
   return (
-    <mesh ref={ref} position={[0, 12, 0]}>
-      <boxGeometry args={[5, 1, 4]} />
+    <mesh ref={ref} position={[0, 5, 0]}>
+      <boxGeometry args={[2, 1, 3]} />
       <meshStandardMaterial map={woodMap} />
     </mesh>
   );
