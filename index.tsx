@@ -37,7 +37,8 @@ import {
   Projectile,
   TankState,
 } from "./types";
-import { map1 } from "./maps/map1";
+import { map1, background } from "./maps/map";
+import { is } from "@react-three/fiber/dist/declarations/src/core/utils";
 
 // const backgroundBoxes = [
 //   {position: [0, 12, 0],
@@ -167,6 +168,8 @@ function Game(props: GameProps) {
       modelRef.current = collada.scene;
       const polygon = collada.scene.children[0].children[0];
       console.log(modelRef.current);
+      //modelRef.current.position.set(map1.startingPosition);
+      modelRef.current.position.set(...map1.startingPosition);
       modelRef.current.scale.set(5, 5, 5);
       // const bufferGeo = collada
       // modelRef.current.rotation.reorder("XYZ");
@@ -358,14 +361,14 @@ function Game(props: GameProps) {
       .add(vec.current.multiplyScalar(distance));
     const mesh = meshRef.current;
     const test = new Vector3();
-    turretRef.current.getWorldPosition(test);
+    modelRef.current.getWorldPosition(test);
     setProjectiles([
       ...projectiles,
       {
         target: [pos.current.x, pos.current.y, pos.current.z],
         position: [
-          test.x || 0,
-          test.y || 0,
+          modelRef.current.position.x || 0,
+          modelRef.current.position.y || 0,
           // test.z || 0,
           0,
         ],
@@ -433,24 +436,24 @@ function Game(props: GameProps) {
   }, []);
 
   useEffect(() => {
-    const gui = new GUI();
-    if (state.camera) {
-      //gui.addColor(ref.current, "color");
-      gui.add(state.camera.position, "x", -100, 100).name("X Position");
-      gui.add(state.camera.position, "y", -100, 100).name("Y Position");
-      gui.add(state.camera.position, "z", -100, 100).name("Z Position");
-      const zoomControl = gui.add(state.camera, "zoom", -100, 100).name("zoom");
-      const fovControl = gui.add(state.camera, "fov", -100, 100).name("fov");
-      fovControl.onChange(() => {
-        state.camera.updateProjectionMatrix();
-      });
-      zoomControl.onChange(() => {
-        state.camera.updateProjectionMatrix();
-      });
-    }
-    return () => {
-      gui.destroy();
-    };
+    //const gui = new GUI();
+    //if (state.camera) {
+    //  //gui.addColor(ref.current, "color");
+    //  gui.add(state.camera.position, "x", -100, 100).name("X Position");
+    //  gui.add(state.camera.position, "y", -100, 100).name("Y Position");
+    //  gui.add(state.camera.position, "z", -100, 100).name("Z Position");
+    //  const zoomControl = gui.add(state.camera, "zoom", -100, 100).name("zoom");
+    //  const fovControl = gui.add(state.camera, "fov", -100, 100).name("fov");
+    //  fovControl.onChange(() => {
+    //    state.camera.updateProjectionMatrix();
+    //  });
+    //  zoomControl.onChange(() => {
+    //    state.camera.updateProjectionMatrix();
+    //  });
+    //}
+    //return () => {
+    //  gui.destroy();
+    //};
   }, []);
 
   useEffect(() => {
@@ -603,32 +606,64 @@ function Game(props: GameProps) {
   }
 
   const checkIntersection = function (player: Object3D): boolean {
+    // loop through map1
     console.log("running checkIntersection");
+    test1.current.setFromObject(player);
+    // const boxGeo = new BoxGeometry();
+    // const mesh = new Mesh(undefined, new MeshBasicMaterial());
+    const center = new Vector3();
+    const size = new Vector3();
+    const boundingBox = new Box3();
+
+    // TODO: refactor this
+    const isIntersectingObject = function (obj: any): boolean {
+      for (let i = 0; i < obj.boxes.length; i++) {
+        let box = obj.boxes[i];
+
+        // TODO: speed this up
+        center.set(box.position[0], box.position[1], box.position[2]);
+        size.set(box.geometry[0], box.geometry[1], box.geometry[2]);
+        boundingBox.setFromCenterAndSize(center, size);
+
+        // mesh.geometry = new BoxGeometry(...box.geometry);
+        // mesh.position.set(box.position[0], box.position[1], box.position[2]);
+        // boundingBox.setFromObject(mesh);
+        if (test1.current.intersectsBox(boundingBox)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const isIntersectingMap = isIntersectingObject(map1);
+    if (isIntersectingMap) {
+      return true;
+    }
+    return isIntersectingObject(background);
     //console.log(player);
     //console.log(player.boundingBox);
     //console.log(player.geometry);
     // player.scale.set(1, 1, 1);
-    const pos = new Vector3();
-    turretRef.current.getWorldPosition(pos);
+    // const pos = new Vector3();
+    // turretRef.current.getWorldPosition(pos);
     //console.log("turret Pos");
     //console.log(pos);
 
-    const pos2 = new Vector3();
-    baseRef.current.getWorldPosition(pos2);
+    //const pos2 = new Vector3();
+    //baseRef.current.getWorldPosition(pos2);
     //console.log("base Pos");
     //console.log(pos2);
-    test1.current.setFromObject(player);
     // test1.current.expandByScalar(10);
-    const another = new Box3();
-    const another2 = new Vector3();
+    // const another = new Box3();
+    //const another2 = new Vector3();
     // meshRef.current.getSize(another);
     // another.setFromObject(meshRef.current);
     //another.getSize(another2);
-    const hello = new Vector3();
-    test1.current.getSize(hello);
-    let box3 = new Box3();
-    box3.expandByObject(modelRef.current);
-    console.log(box3);
+    // const hello = new Vector3();
+    // test1.current.getSize(hello);
+    // let box3 = new Box3();
+    // box3.expandByObject(modelRef.current);
+    // console.log(box3);
     // console.log(another);
     //console.log(hello);
     // const another = new Box3(
@@ -643,7 +678,7 @@ function Game(props: GameProps) {
     // console.log(meshRef);
     // console.log(test1.current);
     // console.log(test2.current);
-    return test1.current.intersectsBox(test2.current);
+    // return test1.current.intersectsBox(test2.current);
     //console.log(test1.current);
     //return mesh.some((o) => {
     //  //test2.current.setFromObject(o);
@@ -657,6 +692,7 @@ function Game(props: GameProps) {
     //});
     //test1.current.setFromObject(player);
     //console.log(test1.current);
+    return false;
   };
 
   useFrame((state, delta, xrFrame) => {
@@ -798,6 +834,13 @@ function Game(props: GameProps) {
         <Box
           position={box.position}
           geometry={box.geometry}
+          texture={box.texture}
+        />
+      ))}
+      {background.boxes.map((box) => (
+        <Box
+          position={box.position}
+          geometry={box.geometry}
           texture={"wood/wood4.jpg"}
         />
       ))}
@@ -840,17 +883,17 @@ const Background = () => {
 function Light() {
   const ref = useRef<DirectionalLight>(null);
   useEffect(() => {
-    const gui = new GUI();
-    if (ref.current) {
-      gui.add(ref.current, "intensity", 0, 1000);
-      //gui.addColor(ref.current, "color");
-      gui.add(ref.current.position, "x", -100, 100).name("X Position");
-      gui.add(ref.current.position, "y", -100, 100).name("Y Position");
-      gui.add(ref.current.position, "z", -100, 100).name("Z Position");
-    }
-    return () => {
-      gui.destroy();
-    };
+    // const gui = new GUI();
+    // if (ref.current) {
+    //   gui.add(ref.current, "intensity", 0, 1000);
+    //   //gui.addColor(ref.current, "color");
+    //   gui.add(ref.current.position, "x", -100, 100).name("X Position");
+    //   gui.add(ref.current.position, "y", -100, 100).name("Y Position");
+    //   gui.add(ref.current.position, "z", -100, 100).name("Z Position");
+    // }
+    // return () => {
+    //   gui.destroy();
+    // };
   }, []);
   return (
     <directionalLight ref={ref} position={[0, -3, 10]} args={[0xffffff, 2]} />
@@ -879,7 +922,7 @@ function Projectile(props: Projectile) {
     if (meshRef.current) {
       console.log("running projectile look at on init");
       meshRef.current.lookAt(props.target[0], props.target[1], props.target[2]);
-      meshRef.current.translateZ(2);
+      meshRef.current.translateZ(1);
     }
   }, []);
 
@@ -894,7 +937,7 @@ function Projectile(props: Projectile) {
       position={[props.position[0], props.position[1], props.position[2]]}
       ref={meshRef}
     >
-      <capsuleGeometry ref={capsuleRef} args={[0.2, 0.3, 4, 8]} />
+      <capsuleGeometry ref={capsuleRef} args={[0.1, 0.2, 4, 8]} />
     </mesh>
   );
 }
