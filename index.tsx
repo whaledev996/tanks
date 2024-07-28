@@ -136,7 +136,7 @@ function App() {
                 aspect: window.innerWidth / window.innerHeight,
                 near: 0.1,
                 far: 1000,
-                position: [0, -5, 25],
+                position: [0, 0, 25],
               }}
             >
               <Game gameId={gameId} clientId={clientId} />
@@ -191,7 +191,6 @@ function Game(props: GameProps) {
       //baseRef.current.applyMatrix4(new Matrix4().makeRotationX(Math.PI));
       //baseRef.current.applyMatrix4(new Matrix4().makeRotationY(Math.PI));
       console.log(turretRef.current);
-      //modelRef.current.position.set(0, 0, 2);
       // fakeRef.current = modelRef.current.clone();
       let geo = new BoxGeometry(1.005, 1.005, 0.57);
       //let mat = new MeshBasicMaterial({ color: 0x00ff00 });
