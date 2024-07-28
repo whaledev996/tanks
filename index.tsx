@@ -37,6 +37,15 @@ import {
   Projectile,
   TankState,
 } from "./types";
+import { map1 } from "./maps/map1";
+
+// const backgroundBoxes = [
+//   {position: [0, 12, 0],
+//   geometry: [
+//
+//
+//
+// ]
 
 function generateUniqueId() {
   const timestamp = Date.now().toString(36); // Convert timestamp to base36 string
@@ -105,6 +114,7 @@ function App() {
             width: "100vw",
             height: "100vh",
           }}
+          id="haritest"
         >
           <Canvas
             camera={{
@@ -371,13 +381,28 @@ function Game(props: GameProps) {
     //
     //     }
     //
-    state.camera.aspect = window.innerWidth / window.innerHeight;
+    const canvas = document.getElementById("haritest");
+    let newWidth = window.innerWidth;
+    let newHeight = window.innerHeight;
+
+    if (newWidth / newHeight > 1.777) {
+      // need to lower width
+      newWidth = (16 * newHeight) / 9;
+    }
+
+    if (newWidth / newHeight < 1.777) {
+      // need to lower height
+      newHeight = (9 * newWidth) / 16;
+    }
+
+    canvas.style.width = `${newWidth}px`;
+    canvas.style.height = `${newHeight}px`;
+    state.camera.aspect = newWidth / newHeight;
     // Adjust either FOV or zoom based on your chosen method
     //const initialFOV = state.camera.fov;
     //state.camera.fov = 50 / state.camera.aspect;
-    state.gl.setSize(window.innerWidth, window.innerHeight);
+    state.gl.setSize(newWidth, newHeight);
     state.camera.updateProjectionMatrix();
-    state.camera.lookAt(0, 0, 0);
     // console.log(state.camera.fov);
     //state.camera.updateProjectionMatrix();
   }
@@ -756,7 +781,13 @@ function Game(props: GameProps) {
     <>
       <Background />
       <Light />
-      <Box ref={boxRef} />
+      {map1.boxes.map((box) => (
+        <Box
+          position={box.position}
+          geometry={box.geometry}
+          texture={"wood/wood4.jpg"}
+        />
+      ))}
       {otherTank.sequence !== 0 && (
         <OtherTank
           rotation={otherTank.rotation}
@@ -896,13 +927,14 @@ function OtherTank(props: { position: Vector3Tuple; rotation: number }) {
 }
 
 const Box = forwardRef<Mesh>(function (props, ref) {
-  const woodMap = useLoader(TextureLoader, "wood/wood4.jpg");
+  //const woodMap = useLoader(TextureLoader, "wood/wood4.jpg");
+  const woodMap = useLoader(TextureLoader, props.texture);
   //woodMap.wrapS = MirroredRepeatWrapping;
   //woodMap.wrapT = MirroredRepeatWrapping;
   //woodMap.repeat.set(4, 1);
   return (
-    <mesh ref={ref} position={[0, 5, 0]}>
-      <boxGeometry args={[2, 1, 3]} />
+    <mesh ref={ref} position={props.position}>
+      <boxGeometry args={props.geometry} />
       <meshStandardMaterial map={woodMap} />
     </mesh>
   );
