@@ -113,20 +113,35 @@ function App() {
             margin: "auto",
             width: "100vw",
             height: "100vh",
+            backgroundImage: `url(${"wood/wood.png"})`,
+            backgroundRepeat: "repeat",
           }}
-          id="haritest"
         >
-          <Canvas
-            camera={{
-              fov: 50,
-              aspect: window.innerWidth / window.innerHeight,
-              near: 0.1,
-              far: 1000,
-              position: [0, -5, 25],
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              margin: "auto",
+              width: "100vw",
+              height: "100vh",
             }}
+            id="haritest"
           >
-            <Game gameId={gameId} clientId={clientId} />
-          </Canvas>
+            <Canvas
+              camera={{
+                fov: 50,
+                aspect: window.innerWidth / window.innerHeight,
+                near: 0.1,
+                far: 1000,
+                position: [0, -5, 25],
+              }}
+            >
+              <Game gameId={gameId} clientId={clientId} />
+            </Canvas>
+          </div>
         </div>
       )}
     </>
@@ -779,7 +794,6 @@ function Game(props: GameProps) {
 
   return (
     <>
-      <Background />
       <Light />
       {map1.boxes.map((box) => (
         <Box
