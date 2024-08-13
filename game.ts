@@ -5,7 +5,7 @@
 // an array of enemy tanks?
 // should send events to server and reconcile
 
-import { Group } from "three";
+import { Bone, Group, SkinnedMesh } from "three";
 import { PlayerTank } from "./playertank";
 import { Action, TanksMap } from "./types";
 

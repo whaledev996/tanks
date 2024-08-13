@@ -190,103 +190,33 @@ function Game(props: GameProps) {
   const state = useThree();
 
   const sequence = useRef<number>(0);
-  const vec = useRef<Vector3>(new Vector3(0, 0, 0));
-  const pos = useRef<Vector3>(new Vector3(0, 0, 0));
+  const _v0 = useRef<Vector3>(new Vector3());
+  const mousePos = useRef<Vector3>(new Vector3());
   const keysPressed = useMovement();
 
   const test1 = useRef<Box3>(new Box3());
   const test2 = useRef<Box3>(new Box3());
   const test3 = useRef<Mesh | null>(null);
 
-  function handleMouseMove(e: MouseEvent) {
-    vec.current.set(state.pointer.x, state.pointer.y, 0.5);
-    vec.current.unproject(state.camera);
-    vec.current.sub(state.camera.position).normalize();
-    var distance = -state.camera.position.z / vec.current.z;
-    pos.current
+  function calculateMousePosition() {
+    // convert mouse click coordinates into game coordinates
+    _v0.current.set(state.pointer.x, state.pointer.y, 0);
+    _v0.current.unproject(state.camera);
+    _v0.current.sub(state.camera.position).normalize();
+    var distance = -state.camera.position.z / _v0.current.z;
+    mousePos.current
       .copy(state.camera.position)
-      .add(vec.current.multiplyScalar(distance));
-    const other = new Vector3();
-    const another = new Vector3();
-    // const q = new Quaternion();
-    modelRef.current.getWorldDirection(other);
-    //console.log("CURRENT POS");
-    //console.log(pos.current);
-    turretRef.current.getWorldDirection(another);
-    // test.normalize();
-    // console.log("turret current world rotation");
-    // console.log(another);
-    // console.log("model current y rotation");
-    //console.log(modelRef.current.rotation);
-    // console.log(other);
+      .add(_v0.current.multiplyScalar(distance));
+  }
 
-    //console.log("turret updated y rotation");
-    //turretRef.current.setRotationFromAxisAngle(
-    //  new Vector3(0, 1, 0),
-    //  modelRef.current.rotation.y
-    //);
-    //console.log(turretRef.current.rotation.y);
-
-    if (turretRef.current) {
-      // temporary hack to prevent cannon from flipping over
-      const old = turretRef.current.rotation.z;
-      const old2 = turretRef.current.rotation.x;
-      const newPos = pos.current.clone();
-      const worldPos = new Vector3();
-      modelRef.current.getWorldPosition(worldPos);
-      // console.log(worldPos);
-      newPos.x = newPos.x + -1 * worldPos.x;
-      newPos.y = newPos.y + -1 * worldPos.y;
-      another.normalize();
-      newPos.normalize();
-      // // pos.current.normalize();
-      const newR = Math.acos(newPos.dot(another));
-      // console.log("current angle between mouse and turret arm");
-      // console.log(newR);
-
-      const crossVector = new Vector3();
-      crossVector.crossVectors(
-        new Vector3(another.x, another.y, 0),
-        new Vector3(newPos.x, newPos.y, 0)
+  function handleMouseMove(e: MouseEvent) {
+    calculateMousePosition();
+    if (game.current) {
+      // TODO: make passing 0 less ugly here
+      game.current.handleInput(
+        { eventType: "mousemove", position: mousePos.current.toArray() },
+        0
       );
-      if (!isNaN(newR)) {
-        if (crossVector.z >= 0) {
-          // console.log("left");
-          turretRef.current.rotateY(newR);
-        } else {
-          // console.log("right");
-          turretRef.current.rotateY(-1 * newR);
-        }
-      }
-
-      // const angle = Math.atan(pos.current.x, pos.current.y);
-      // const qx = 0;
-      // const qy = Math.sin(angle / 2);
-      // const qz = 0;
-      // const w = Math.cos(angle / 2);
-      //const q = new Quaternion();
-      // turretRef.current.setRotationFromQuaternion(q);
-      // q.setFromEuler(new Euler(0, newR + Math.PI / 2, 0));
-      // if (pos.current.y >= 0) {
-      //q.setFromAxisAngle(new Vector3(0, 1, 0), newR);
-      // turretRef.current.quaternion.premultiply(q);
-      //}
-      // console.log(newR);
-      //console.log(turretRef.current.rotation.y);
-      //turretRef.current.rotation.y = newR;
-      //turretRef.current.rotation.y = 2 * Math.PI;
-      // if (pos.x < 0) {
-      //   turretRef.current.rotation.y = newR - Math.PI / 2;
-      // } else {
-      //   turretRef.current.rotation.y = newR;
-      // }
-      // turretRef.current.lookAt(pos.current.x, pos.current.y, 0);
-      // turretRef.current.rotation.z = old;
-      //turretRef.current.rotation.x = old2;
-      // turretRef.current.matrixWorld.elements[8] = newPos.x;
-      // turretRef.current.matrixWorld.elements[9] = newPos.y;
-      // turretRef.current.updateWorldMatrix();
-      //turretRef.current.rotation.set(old2, turretRef.current.rotation.y, 0);
     }
   }
 
@@ -335,13 +265,8 @@ function Game(props: GameProps) {
     canvas.style.width = `${newWidth}px`;
     canvas.style.height = `${newHeight}px`;
     state.camera.aspect = newWidth / newHeight;
-    // Adjust either FOV or zoom based on your chosen method
-    //const initialFOV = state.camera.fov;
-    //state.camera.fov = 50 / state.camera.aspect;
     state.gl.setSize(newWidth, newHeight);
     state.camera.updateProjectionMatrix();
-    // console.log(state.camera.fov);
-    //state.camera.updateProjectionMatrix();
   }
 
   useEffect(() => {
@@ -359,12 +284,12 @@ function Game(props: GameProps) {
 
   useEffect(() => {
     //window.addEventListener("mousedown", handleMouseDown);
-    //window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
     //window.addEventListener("resize", handleWindowResize);
 
     return () => {
       //window.removeEventListener("mousedown", handleMouseDown);
-      //window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mousemove", handleMouseMove);
     };
   }, [projectiles]);
 

@@ -10,8 +10,13 @@ export interface TankState {
   sequence: number;
 }
 
-export type Action = "w" | "a" | "s" | "d";
+export type Action = "w" | "a" | "s" | "d" | TankMouseEvent;
 export type BoxGeometryTuple = [number, number, number];
+
+export interface TankMouseEvent {
+  position: Vector3Tuple;
+  eventType: "mousedown" | "mousemove";
+}
 
 export interface Client {
   clientId: string;
