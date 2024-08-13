@@ -1,6 +1,9 @@
-export const map1 = {
+import { TanksMap } from "./types";
+
+// LEVEL 1!
+export const map1: TanksMap = {
   startingPosition: [-10, 0, 0],
-  boxes: [
+  objects: [
     {
       position: [0, 5, 0],
       geometry: [2, 1, 2],
@@ -31,26 +34,25 @@ export const map1 = {
       geometry: [2, 1, 2],
       texture: "wood/wood4.jpg",
     },
-  ],
-};
-
-export const background = {
-  boxes: [
     {
       position: [0, 10, 0],
       geometry: [40, 0.5, 0.5],
+      texture: "wood/wood.png",
     },
     {
       position: [0, -10, 0],
       geometry: [40, 0.5, 0.5],
+      texture: "wood/wood.png",
     },
     {
       position: [-20, 0, 0],
       geometry: [0.5, 20.5, 0.5],
+      texture: "wood/wood.png",
     },
     {
       position: [20, 0, 0],
       geometry: [0.5, 20.5, 0.5],
+      texture: "wood/wood.png",
     },
   ],
 };

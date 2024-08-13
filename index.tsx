@@ -37,16 +37,9 @@ import {
   Projectile,
   TankState,
 } from "./types";
-import { map1, background } from "./maps/map";
+import { map1 } from "./map";
+import { Game as TankGame } from "./game";
 import { is } from "@react-three/fiber/dist/declarations/src/core/utils";
-
-// const backgroundBoxes = [
-//   {position: [0, 12, 0],
-//   geometry: [
-//
-//
-//
-// ]
 
 function generateUniqueId() {
   const timestamp = Date.now().toString(36); // Convert timestamp to base36 string
@@ -156,74 +149,20 @@ interface GameProps {
 
 function Game(props: GameProps) {
   const modelRef = useRef();
-  const baseRef = useRef();
   const turretRef = useRef();
-  const something = new Vector3();
   const fakeRef = useRef();
+  const game = useRef<TankGame>();
+
+  // Initialize everything:
+  // Game obj, current map
   // Load Collada model
   useEffect(() => {
     const loader = new GLTFLoader();
     loader.load("Tanks/tank6.glb", (collada) => {
-      console.log(collada);
-      modelRef.current = collada.scene;
-      const polygon = collada.scene.children[0].children[0];
-      console.log(modelRef.current);
-      //modelRef.current.position.set(map1.startingPosition);
-      modelRef.current.position.set(...map1.startingPosition);
-      modelRef.current.scale.set(5, 5, 5);
-      // const bufferGeo = collada
-      // modelRef.current.rotation.reorder("XYZ");
-      // modelRef.current.rotation.set(0, Math.PI, 0);
-      //modelRef.current.up.set(0, 1, 0);
-      // baseRef.current =
-      //   modelRef.current.children[0].children[0].skeleton.bones[0];
-      // baseRef.current.rotation.set(Math.PI / 2, 0, 0);
-      // turretRef.current =
-      //   modelRef.current.children[0].children[0].skeleton.bones[1];
-      baseRef.current = polygon.skeleton.bones[0];
-      turretRef.current = polygon.skeleton.bones[1];
-      console.log(turretRef.current);
-      // turretRef.current.up.set(0, 0, 1);
-      //baseRef.current.rotation.set(0, 0, Math.PI / 2);
-      // baseRef.current.applyMatrix4(new Matrix4().makeRotationZ(Math.PI / 2));
-      // baseRef.current.rotation.reorder("YXZ");
-      let measure = new Box3().setFromObject(modelRef.current);
-      measure.getSize(something);
-      console.log(something);
-      console.log(baseRef.current);
-      //baseRef.current.applyMatrix4(new Matrix4().makeRotationX(Math.PI));
-      //baseRef.current.applyMatrix4(new Matrix4().makeRotationY(Math.PI));
-      console.log(turretRef.current);
-      // fakeRef.current = modelRef.current.clone();
-      let geo = new BoxGeometry(1.005, 1.005, 0.57);
-      //let mat = new MeshBasicMaterial({ color: 0x00ff00 });
-      fakeRef.current = new Mesh(geo);
-      //fakeRef.current.scale.set(0.1, 0.1, 0.1);
-      console.log(fakeRef.current);
-      // Calculate the bounding box of the model (but no a single Mesh) so that the whole model is centered
-      let box3 = new Box3();
-      box3.expandByObject(modelRef.current);
-      console.log(box3);
-
-      // Assign the center point of the bounding box to the vector
-      let center = new Vector3();
-      box3.getCenter(center);
-      console.log(center);
-
-      // Reposition the model so that it is centered.
-      // modelRef.current.position.x = modelRef.current.position.x - center.x;
-      // modelRef.current.position.y = modelRef.current.position.y - center.y;
-      // modelRef.current.position.z = modelRef.current.position.z - center.z;
-      // Access vertex groups
-      //modelRef.current.traverse((child) => {
-      //  if (child instanceof Mesh) {
-      //    // Assuming the vertex groups are stored in userData
-      //    const vertexGroups = child.userData.vertexGroups;
-      //    if (vertexGroups) {
-      //      console.log("Vertex groups:", vertexGroups);
-      //    }
-      //  }
-      //});
+      const scene = collada.scene;
+      scene.scale.set(5, 5, 5);
+      scene.position.set(...map1.startingPosition);
+      game.current = new TankGame(map1, scene);
     });
   }, []);
 
@@ -379,25 +318,6 @@ function Game(props: GameProps) {
   }
 
   function handleWindowResize() {
-    //var tanFOV = Math.tan(((Math.PI / 180) * state.camera.fov) / 2);
-    //var windowHeight = window.innerHeight;
-    //state.camera.aspect = window.innerWidth / window.innerHeight;
-    //state.camera.fov =
-    //(360 / Math.PI) * Math.atan(tanFOV * (window.innerHeight / windowHeight));
-    //state.camera.updateProjectionMatrix();
-    //state.gl.setSize(window.innerWidth, window.innerHeight);
-    // let newWidth = window.innerWidth;
-    // let newHeight = window.innerHeight;
-    // if (window.innerWidth > window.innerHeight) {
-    //   newWidth = (window.innerHeight * 16) / 9;
-    // }
-    // console.log(newWidth);
-
-    //     if (window.innerHeight > window.innerWidth) {
-    //       newHeight = ()
-    //
-    //     }
-    //
     const canvas = document.getElementById("haritest");
     let newWidth = window.innerWidth;
     let newHeight = window.innerHeight;
@@ -435,35 +355,16 @@ function Game(props: GameProps) {
     }
   }, []);
 
-  useEffect(() => {
-    //const gui = new GUI();
-    //if (state.camera) {
-    //  //gui.addColor(ref.current, "color");
-    //  gui.add(state.camera.position, "x", -100, 100).name("X Position");
-    //  gui.add(state.camera.position, "y", -100, 100).name("Y Position");
-    //  gui.add(state.camera.position, "z", -100, 100).name("Z Position");
-    //  const zoomControl = gui.add(state.camera, "zoom", -100, 100).name("zoom");
-    //  const fovControl = gui.add(state.camera, "fov", -100, 100).name("fov");
-    //  fovControl.onChange(() => {
-    //    state.camera.updateProjectionMatrix();
-    //  });
-    //  zoomControl.onChange(() => {
-    //    state.camera.updateProjectionMatrix();
-    //  });
-    //}
-    //return () => {
-    //  gui.destroy();
-    //};
-  }, []);
+  useEffect(() => {}, []);
 
   useEffect(() => {
-    window.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("resize", handleWindowResize);
+    //window.addEventListener("mousedown", handleMouseDown);
+    //window.addEventListener("mousemove", handleMouseMove);
+    //window.addEventListener("resize", handleWindowResize);
 
     return () => {
-      window.removeEventListener("mousedown", handleMouseDown);
-      window.removeEventListener("mousemove", handleMouseMove);
+      //window.removeEventListener("mousedown", handleMouseDown);
+      //window.removeEventListener("mousemove", handleMouseMove);
     };
   }, [projectiles]);
 
@@ -617,8 +518,8 @@ function Game(props: GameProps) {
 
     // TODO: refactor this
     const isIntersectingObject = function (obj: any): boolean {
-      for (let i = 0; i < obj.boxes.length; i++) {
-        let box = obj.boxes[i];
+      for (let i = 0; i < obj.objects.length; i++) {
+        let box = obj.objects[i];
 
         // TODO: speed this up
         center.set(box.position[0], box.position[1], box.position[2]);
@@ -635,181 +536,25 @@ function Game(props: GameProps) {
       return false;
     };
 
-    const isIntersectingMap = isIntersectingObject(map1);
-    if (isIntersectingMap) {
-      return true;
-    }
-    return isIntersectingObject(background);
-    //console.log(player);
-    //console.log(player.boundingBox);
-    //console.log(player.geometry);
-    // player.scale.set(1, 1, 1);
-    // const pos = new Vector3();
-    // turretRef.current.getWorldPosition(pos);
-    //console.log("turret Pos");
-    //console.log(pos);
-
-    //const pos2 = new Vector3();
-    //baseRef.current.getWorldPosition(pos2);
-    //console.log("base Pos");
-    //console.log(pos2);
-    // test1.current.expandByScalar(10);
-    // const another = new Box3();
-    //const another2 = new Vector3();
-    // meshRef.current.getSize(another);
-    // another.setFromObject(meshRef.current);
-    //another.getSize(another2);
-    // const hello = new Vector3();
-    // test1.current.getSize(hello);
-    // let box3 = new Box3();
-    // box3.expandByObject(modelRef.current);
-    // console.log(box3);
-    // console.log(another);
-    //console.log(hello);
-    // const another = new Box3(
-    //   new Vector3(
-    //     test1.current.min.x,
-    //     test1.current.min.z,
-    //     test1.current.min.y
-    //   ),
-    //   new Vector3(test1.current.max.x, test1.current.max.z, test1.current.max.y)
-    // );
-    // test1.current.expandByScalar(0.1);
-    // console.log(meshRef);
-    // console.log(test1.current);
-    // console.log(test2.current);
-    // return test1.current.intersectsBox(test2.current);
-    //console.log(test1.current);
-    //return mesh.some((o) => {
-    //  //test2.current.setFromObject(o);
-    //  test2.current = new Box3().setFromObject(o);
-    //  console.log(test2.current);
-    //  return (
-    //    o !== player &&
-    //    o.geometry.type === "BoxGeometry" &&
-    //    test1.current.intersectsBox(test2.current)
-    //  );
-    //});
-    //test1.current.setFromObject(player);
-    //console.log(test1.current);
-    return false;
+    return isIntersectingObject(map1);
   };
 
   useFrame((state, delta, xrFrame) => {
     // This function runs at the native refresh rate inside of a shared render-loop
-    //console.log(`delta: ${delta}`);
-    // movement speed
-    // const mesh = meshRef.current;
-    const fake = fakeRef.current;
-    if (modelRef.current && fake) {
-      // const fake = modelRef.current.clone();
-      //handle collisions
-      //console.log(state.scene.children);
-      //console.log(fake.position.y);
-      //console.log(boxRef.current?.position.y);
-      //console.log(baseRef.current.position);
-      // console.log(fake.position);
-      // console.log(modelRef.current.position);
+    if (game.current) {
       if (keysPressed.has("w")) {
-        fake.translateY(movementSpeed * delta);
-        // if we intersect
-        const doesIntersect = checkIntersection(fake);
-        console.log(doesIntersect);
-        if (doesIntersect) {
-          //console.log(intersects);
-          //mesh.translateY(-1 * movementSpeed * delta);
-          fake.position.set(
-            modelRef.current.position.x,
-            modelRef.current.position.y,
-            modelRef.current.position.z
-          );
-        } else {
-          modelRef.current.translateY(movementSpeed * delta);
-          // mesh.translateY(movementSpeed * delta);
-        }
-        //const intersects = checkIntersection(
-        //  mesh,
-        //  state.scene.children.filter((c) => c.type === "Mesh") as Mesh[]
-        //);
-        //sendToClient("w");
+        game.current.handleInput("w", delta);
       }
       if (keysPressed.has("s")) {
-        fake.translateY(-1 * movementSpeed * delta);
-        // if we intersect
-        const doesIntersect = checkIntersection(fake);
-        console.log(doesIntersect);
-        if (doesIntersect) {
-          fake.position.set(
-            modelRef.current.position.x,
-            modelRef.current.position.y,
-            modelRef.current.position.z
-          );
-          //console.log(intersects);
-          //mesh.translateY(-1 * movementSpeed * delta);
-          // fake.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
-        } else {
-          modelRef.current.translateY(-1 * movementSpeed * delta);
-          // mesh.translateY(-1 * movementSpeed * delta);
-        }
-        // mesh.translateY(-1 * movementSpeed * delta);
-        // const intersects = checkIntersection(
-        //   mesh,
-        //   state.scene.children.filter((c) => c.type === "Mesh") as Mesh[]
-        // );
-        // if (intersects) {
-        //   mesh.translateY(movementSpeed * delta);
-        //   modelRef.current.translateZ(movementSpeed * delta);
-        // }
-        //sendToClient("s");
+        game.current.handleInput("s", delta);
       }
       if (keysPressed.has("a")) {
-        fake.rotateZ(rotationSpeed * delta);
-        // mesh.rotateZ(rotationSpeed * delta);
-        //sendToClient("a");
-        modelRef.current.rotateZ(rotationSpeed * delta);
-        // turretRef.current.rotateY(rotationSpeed * delta);
-        // turretRef.current.rotateX(rotationSpeed * delta);
+        game.current.handleInput("a", delta);
       }
       if (keysPressed.has("d")) {
-        fake.rotateZ(-1 * rotationSpeed * delta);
-        // mesh.rotateZ(-1 * rotationSpeed * delta);
-        //sendToClient("d");
-        modelRef.current.rotateZ(-1 * rotationSpeed * delta);
-        //turretRef.current.rotateY(-1 * rotationSpeed * delta);
+        game.current.handleInput("d", delta);
       }
-      if (keysPressed.has("v")) {
-        let newMin = new Vector3();
-        let newMax = new Vector3();
-        let box3 = new Box3();
-        box3.expandByObject(modelRef.current);
-        console.log(box3);
-        const center = new Vector3();
-        box3.getCenter(center);
-        console.log(center);
-        newMax.x = box3.max.x;
-        newMin.x = box3.min.x;
-        newMax.y = center.y + (box3.max.z - center.z);
-        newMin.y = center.y - (box3.max.z - center.z);
-        newMax.z = center.z + (box3.max.y - center.y);
-        newMin.z = center.z - (box3.max.y - center.y);
-        const bbox = new Box3Helper(new Box3(newMin, newMax));
-        state.scene.add(bbox);
-
-        //turretRef.current.rotateX(0.02);
-        // turretRef.current.rotateOnWorldAxis(new Vector3(0, 1, 0), Math.PI / 2);
-        // turretRef.current.rotation.x += 0.02;
-        // console.log(turretRef.current.rotation);
-        // const q = new Quaternion(
-        //   0,
-        //   Math.sin(Math.PI / 4),
-        //   0,
-        //   Math.cos(Math.PI / 4)
-        // );
-        // turretRef.current.applyQuaternion(q);
-        //baseRef.current.translateY(5);
-        //modelRef.current.translateZ(0.1);
-      }
-      sendToClient(Array.from(keysPressed));
+      //sendToClient(Array.from(keysPressed));
       //serverReconcilation(delta);
     }
   });
@@ -830,18 +575,11 @@ function Game(props: GameProps) {
   return (
     <>
       <Light />
-      {map1.boxes.map((box) => (
+      {map1.objects.map((box) => (
         <Box
           position={box.position}
           geometry={box.geometry}
           texture={box.texture}
-        />
-      ))}
-      {background.boxes.map((box) => (
-        <Box
-          position={box.position}
-          geometry={box.geometry}
-          texture={"wood/wood4.jpg"}
         />
       ))}
       {otherTank.sequence !== 0 && (
@@ -850,16 +588,12 @@ function Game(props: GameProps) {
           position={otherTank.position}
         />
       )}
-      {modelRef.current && <primitive object={modelRef.current} />}
+      {game.current && <primitive object={game.current.playerTank.tank} />}
       {projectileList}
-      <mesh position={[0, 0, 0]} ref={meshRef}>
+      {/*  <mesh position={[0, 0, 0]} ref={meshRef}>
         <boxGeometry args={[1.005, 1.005, 0.57]} />
         <meshBasicMaterial args={[{ color: "red" }]} />
-      </mesh>
-      {/*<mesh ref={meshRef}>*/}
-      {/*<boxGeometry args={[1, 1, 0.5]} />*/}
-      {/*<meshBasicMaterial args={[{ color: 0x4287f5 }]} />*/}
-      {/*</mesh>*/}
+      </mesh> */}
     </>
   );
 }

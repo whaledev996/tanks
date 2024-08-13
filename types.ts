@@ -11,6 +11,7 @@ export interface TankState {
 }
 
 export type Action = "w" | "a" | "s" | "d";
+export type BoxGeometryTuple = [number, number, number];
 
 export interface Client {
   clientId: string;
@@ -34,5 +35,16 @@ export interface Projectile {
   id: string;
 }
 
+export interface TanksMap {
+  startingPosition: Vector3Tuple;
+  objects: TanksMapObject[];
+}
+
+export interface TanksMapObject {
+  position: Vector3Tuple;
+  geometry: BoxGeometryTuple;
+  texture: string;
+}
+
 // each Game, Tank has an id
-// 
+//
