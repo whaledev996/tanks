@@ -1,4 +1,4 @@
-import { Vector3Tuple } from "three";
+import { Box3, Vector3Tuple } from "three";
 
 export interface GameState {
   [clientId: string]: TankState;
@@ -10,7 +10,8 @@ export interface TankState {
   sequence: number;
 }
 
-export type Action = "w" | "a" | "s" | "d" | TankMouseEvent;
+export type Action = KeyInput | TankMouseEvent;
+export type KeyInput = "w" | "a" | "s" | "d";
 export type BoxGeometryTuple = [number, number, number];
 
 export interface TankMouseEvent {
@@ -21,6 +22,10 @@ export interface TankMouseEvent {
 export interface Client {
   clientId: string;
   gameId: string;
+}
+
+export interface Collidable {
+  getBoundingBox: () => Box3;
 }
 
 export interface ClientAction {

@@ -8,13 +8,15 @@ import {
   SkinnedMesh,
   Vector3Tuple,
 } from "three";
-import { Action, TanksMap, TankMouseEvent } from "./types";
+import { Action, Collidable, TanksMap } from "./types";
+import { TanksProjectile } from "./projectile";
 
 export const TANK_WIDTH = 1.005;
 export const TANK_HEIGHT = 1.005;
 export const TANK_DEPTH = 0.57;
 export const TANK_MOVEMENT_SPEED = 3;
 export const TANK_ROTATION_SPEED = 2;
+export const TANK_PROJECTILE_SPEED = 4;
 
 const _v0 = new Vector3();
 const _v1 = new Vector3();
@@ -39,12 +41,14 @@ const _b0 = new Box3();
  */
 
 // a shared Tank that can be used on the Client and the Server
-export class PlayerTank {
+export class PlayerTank implements Collidable {
   tank: Group; // store the actual tank model, not needed on the server
   map: TanksMap;
   ghostTank: Mesh; // invisible object to help handle collisions
   boundingBox: Box3;
   cannon: Object3D | null;
+  projectiles: TanksProjectile[];
+  isIntersectingMap: boolean;
 
   constructor(obj: Group, map: TanksMap) {
     this.ghostTank = new Mesh(
@@ -61,6 +65,13 @@ export class PlayerTank {
     this.boundingBox = new Box3();
     this.map = map;
     this.tank = obj;
+    this.projectiles = [];
+    this.isIntersectingMap = false;
+  }
+
+  getBoundingBox(): Box3 {
+    this.boundingBox.setFromObject(this.ghostTank);
+    return this.boundingBox;
   }
 
   isCollision(): boolean {
@@ -87,7 +98,7 @@ export class PlayerTank {
 
   move(units: number) {
     this.ghostTank.translateY(units);
-    if (this.isCollision()) {
+    if (this.isIntersectingMap) {
       this.ghostTank.position.set(...this.tank.position.toArray());
     } else {
       this.tank.translateY(units);
@@ -127,6 +138,19 @@ export class PlayerTank {
     }
   }
 
+  handleMouseDown(target: Vector3Tuple) {
+    this.projectiles.push(
+      new TanksProjectile(this.tank.position.toArray(), target)
+    );
+  }
+
+  // TODO: not sure if this is the correct design
+  moveProjectiles(delta: number) {
+    this.projectiles.forEach((p) => {
+      p.move(TANK_PROJECTILE_SPEED * delta);
+    });
+  }
+
   handleInput(action: Action, delta: number) {
     if (action === "w") {
       this.move(TANK_MOVEMENT_SPEED * delta);
@@ -138,6 +162,8 @@ export class PlayerTank {
       this.rotate(-1 * TANK_ROTATION_SPEED * delta);
     } else if (action.eventType === "mousemove") {
       this.handleMouseMove(action.position);
+    } else if (action.eventType === "mousedown") {
+      this.handleMouseDown(action.position);
     }
   }
 }

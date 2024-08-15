@@ -34,12 +34,21 @@ import {
   ClientAction,
   ClientActions,
   GameState,
+  KeyInput,
   Projectile,
   TankState,
+  TanksMapObject,
 } from "./types";
 import { map1 } from "./map";
 import { Game as TankGame } from "./game";
 import { is } from "@react-three/fiber/dist/declarations/src/core/utils";
+import {
+  CAPSULE_LENGTH,
+  CAPSULE_RADIAL_SEGMENTS,
+  CAPSULE_RADIUS,
+  CAPSULE_SEGMENTS,
+  TanksProjectile,
+} from "./projectile";
 
 function generateUniqueId() {
   const timestamp = Date.now().toString(36); // Convert timestamp to base36 string
@@ -171,13 +180,7 @@ function Game(props: GameProps) {
     rotation: 0,
     sequence: 0,
   });
-  const [projectiles, setProjectiles] = useState<Projectile[]>([]);
-  const movementSpeed = 3;
-  const rotationSpeed = 2;
-  const woodMap = useLoader(TextureLoader, "wood/wood.png");
-
-  const meshRef = useRef<Mesh>(null);
-  const boxRef = useRef<Mesh>(null);
+  const [hasAddedProjectile, setHasAddedProjectile] = useState(false);
 
   // a list of unacknowledged actions?
   const clientActions = useRef<ClientAction[]>([]);
@@ -193,10 +196,6 @@ function Game(props: GameProps) {
   const _v0 = useRef<Vector3>(new Vector3());
   const mousePos = useRef<Vector3>(new Vector3());
   const keysPressed = useMovement();
-
-  const test1 = useRef<Box3>(new Box3());
-  const test2 = useRef<Box3>(new Box3());
-  const test3 = useRef<Mesh | null>(null);
 
   function calculateMousePosition() {
     // convert mouse click coordinates into game coordinates
@@ -221,30 +220,16 @@ function Game(props: GameProps) {
   }
 
   function handleMouseDown(e: MouseEvent) {
-    vec.current.set(state.pointer.x, state.pointer.y, 0.5);
-    vec.current.unproject(state.camera);
-    vec.current.sub(state.camera.position).normalize();
-    var distance = -state.camera.position.z / vec.current.z;
-    pos.current
-      .copy(state.camera.position)
-      .add(vec.current.multiplyScalar(distance));
-    const mesh = meshRef.current;
-    const test = new Vector3();
-    modelRef.current.getWorldPosition(test);
-    setProjectiles([
-      ...projectiles,
-      {
-        target: [pos.current.x, pos.current.y, pos.current.z],
-        position: [
-          modelRef.current.position.x || 0,
-          modelRef.current.position.y || 0,
-          // test.z || 0,
-          0,
-        ],
-        id: generateUniqueId(),
-        direction: 1,
-      },
-    ]);
+    console.log(mousePos.current.toArray());
+    if (game.current) {
+      // TODO: make passing 0 less ugly here
+      game.current.handleInput(
+        { eventType: "mousedown", position: mousePos.current.toArray() },
+        0
+      );
+    }
+    // TODO: need to fix this projectile hack
+    setHasAddedProjectile((old) => !old);
   }
 
   function handleWindowResize() {
@@ -262,6 +247,7 @@ function Game(props: GameProps) {
       newHeight = (9 * newWidth) / 16;
     }
 
+    // TODO: refactor this
     canvas.style.width = `${newWidth}px`;
     canvas.style.height = `${newHeight}px`;
     state.camera.aspect = newWidth / newHeight;
@@ -270,28 +256,16 @@ function Game(props: GameProps) {
   }
 
   useEffect(() => {
-    state.camera.lookAt(0, 0, 0);
-    //state.scene.background = woodMap;
-    if (boxRef.current) {
-      test2.current.setFromObject(boxRef.current);
-      test3.current = new Mesh(new BoxGeometry(), new MeshBasicMaterial());
-      // test3.current = modelRef.current.clone();
-      test3.current.rotateZ(Math.PI);
-    }
-  }, []);
-
-  useEffect(() => {}, []);
-
-  useEffect(() => {
-    //window.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove);
-    //window.addEventListener("resize", handleWindowResize);
+    window.addEventListener("resize", handleWindowResize);
 
     return () => {
-      //window.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("resize", handleWindowResize);
     };
-  }, [projectiles]);
+  }, []);
 
   // initialize sequence number
   // if (actions.current === null) {
@@ -431,70 +405,17 @@ function Game(props: GameProps) {
     }
   }
 
-  const checkIntersection = function (player: Object3D): boolean {
-    // loop through map1
-    console.log("running checkIntersection");
-    test1.current.setFromObject(player);
-    // const boxGeo = new BoxGeometry();
-    // const mesh = new Mesh(undefined, new MeshBasicMaterial());
-    const center = new Vector3();
-    const size = new Vector3();
-    const boundingBox = new Box3();
-
-    // TODO: refactor this
-    const isIntersectingObject = function (obj: any): boolean {
-      for (let i = 0; i < obj.objects.length; i++) {
-        let box = obj.objects[i];
-
-        // TODO: speed this up
-        center.set(box.position[0], box.position[1], box.position[2]);
-        size.set(box.geometry[0], box.geometry[1], box.geometry[2]);
-        boundingBox.setFromCenterAndSize(center, size);
-
-        // mesh.geometry = new BoxGeometry(...box.geometry);
-        // mesh.position.set(box.position[0], box.position[1], box.position[2]);
-        // boundingBox.setFromObject(mesh);
-        if (test1.current.intersectsBox(boundingBox)) {
-          return true;
-        }
-      }
-      return false;
-    };
-
-    return isIntersectingObject(map1);
-  };
-
   useFrame((state, delta, xrFrame) => {
     // This function runs at the native refresh rate inside of a shared render-loop
     if (game.current) {
-      if (keysPressed.has("w")) {
-        game.current.handleInput("w", delta);
-      }
-      if (keysPressed.has("s")) {
-        game.current.handleInput("s", delta);
-      }
-      if (keysPressed.has("a")) {
-        game.current.handleInput("a", delta);
-      }
-      if (keysPressed.has("d")) {
-        game.current.handleInput("d", delta);
-      }
+      game.current.step(keysPressed, delta);
       //sendToClient(Array.from(keysPressed));
       //serverReconcilation(delta);
     }
   });
 
-  const projectileList = projectiles.map((p) => {
-    console.log(projectiles);
-    return (
-      <Projectile
-        key={p.id}
-        target={p.target}
-        id={p.id}
-        position={p.position}
-        direction={p.direction}
-      />
-    );
+  const projectileList = game.current?.playerTank.projectiles.map((p) => {
+    return <primitive key={p.projectile.uuid} object={p.projectile} />;
   });
 
   return (
@@ -515,97 +436,16 @@ function Game(props: GameProps) {
       )}
       {game.current && <primitive object={game.current.playerTank.tank} />}
       {projectileList}
-      {/*  <mesh position={[0, 0, 0]} ref={meshRef}>
-        <boxGeometry args={[1.005, 1.005, 0.57]} />
-        <meshBasicMaterial args={[{ color: "red" }]} />
-      </mesh> */}
     </>
   );
 }
 
-const Background = () => {
-  const ref = useRef<PlaneGeometry>(null);
-  const texture = useLoader(TextureLoader, "wood/wood.png");
-  texture.encoding = sRGBEncoding;
-  texture.wrapS = MirroredRepeatWrapping;
-  texture.wrapT = MirroredRepeatWrapping;
-  texture.repeat.set(window.innerWidth / 15, window.innerHeight / 15);
-
-  return (
-    <mesh position={[0, 0, 0]}>
-      <planeGeometry args={[window.innerWidth, window.innerHeight, 1]} />
-      <meshStandardMaterial map={texture} />
-    </mesh>
-  );
-};
-
 function Light() {
   const ref = useRef<DirectionalLight>(null);
-  useEffect(() => {
-    // const gui = new GUI();
-    // if (ref.current) {
-    //   gui.add(ref.current, "intensity", 0, 1000);
-    //   //gui.addColor(ref.current, "color");
-    //   gui.add(ref.current.position, "x", -100, 100).name("X Position");
-    //   gui.add(ref.current.position, "y", -100, 100).name("Y Position");
-    //   gui.add(ref.current.position, "z", -100, 100).name("Z Position");
-    // }
-    // return () => {
-    //   gui.destroy();
-    // };
-  }, []);
   return (
     <directionalLight ref={ref} position={[0, -3, 10]} args={[0xffffff, 2]} />
   );
 }
-
-//function Light() {
-//  return <ambientLight args={[0x404040, 5]} />;
-//}
-
-//function Light() {
-//  return (
-//    <hemisphereLight position={[0, 0, 0]} args={[0xffffff, 0xffffff, 1]} />
-//  );
-//}
-
-function Projectile(props: Projectile) {
-  const meshRef = useRef<Mesh>(null);
-  const capsuleRef = useRef<CapsuleGeometry>(null);
-
-  useEffect(() => {
-    if (capsuleRef.current) {
-      console.log("running capsule apply matrix on init");
-      capsuleRef.current.applyMatrix4(new Matrix4().makeRotationX(Math.PI / 2));
-    }
-    if (meshRef.current) {
-      console.log("running projectile look at on init");
-      meshRef.current.lookAt(props.target[0], props.target[1], props.target[2]);
-      meshRef.current.translateZ(1);
-    }
-  }, []);
-
-  useFrame((state, delta, xrFrame) => {
-    if (meshRef.current) {
-      meshRef.current.translateZ(2 * delta * props.direction);
-    }
-  });
-
-  return (
-    <mesh
-      position={[props.position[0], props.position[1], props.position[2]]}
-      ref={meshRef}
-    >
-      <capsuleGeometry ref={capsuleRef} args={[0.1, 0.2, 4, 8]} />
-    </mesh>
-  );
-}
-
-//interface TankProps {
-//  send: (action: Action) => void;
-//  gameId: string;
-//  clientId: string;
-//}
 
 function OtherTank(props: { position: Vector3Tuple; rotation: number }) {
   const meshRef = useRef<Mesh>(null);
@@ -641,57 +481,15 @@ function OtherTank(props: { position: Vector3Tuple; rotation: number }) {
   );
 }
 
-const Box = forwardRef<Mesh>(function (props, ref) {
-  //const woodMap = useLoader(TextureLoader, "wood/wood4.jpg");
+const Box = function (props: TanksMapObject) {
   const woodMap = useLoader(TextureLoader, props.texture);
-  //woodMap.wrapS = MirroredRepeatWrapping;
-  //woodMap.wrapT = MirroredRepeatWrapping;
-  //woodMap.repeat.set(4, 1);
   return (
-    <mesh ref={ref} position={props.position}>
+    <mesh position={props.position}>
       <boxGeometry args={props.geometry} />
       <meshStandardMaterial map={woodMap} />
     </mesh>
   );
-});
-
-//const Tank = forwardRef<Mesh, TankProps>(function (props, ref) {
-//  const movementSpeed = 0.05;
-//  const rotationSpeed = 0.03;
-//  const keysPressed = useMovement();
-//  // const meshRef = useRef<Mesh>(null);
-//
-//  useFrame((state, delta, xrFrame) => {
-//    // This function runs at the native refresh rate inside of a shared render-loop
-//    if (ref) {
-//      const mesh = ref.current;
-//      if (mesh) {
-//        if (keysPressed.has("w")) {
-//          mesh.translateY(movementSpeed);
-//          props.send("w");
-//        }
-//        if (keysPressed.has("s")) {
-//          mesh.translateY(-1 * movementSpeed);
-//          props.send("s");
-//        }
-//        if (keysPressed.has("a")) {
-//          mesh.rotateZ(rotationSpeed);
-//          props.send("a");
-//        }
-//        if (keysPressed.has("d")) {
-//          mesh.rotateZ(-1 * rotationSpeed);
-//          props.send("d");
-//        }
-//      }
-//    }
-//  });
-//  return (
-//    <mesh ref={ref}>
-//      <boxGeometry args={[1, 1, 0.5]} />
-//      <meshBasicMaterial args={[{ color: 0x4287f5 }]} />
-//    </mesh>
-//  );
-//});
+};
 
 function useSocket(callback: (obj: any) => void) {
   const ws = useRef<WebSocket | null>(null);
@@ -728,15 +526,16 @@ function useSocket(callback: (obj: any) => void) {
   return send;
 }
 
-function useMovement(): Set<string> {
-  const [keysPressed, setKeysPressed] = useState(new Set<string>());
-  const allowedKeys = new Set(["w", "a", "s", "d", "v"]);
+function useMovement(): KeyInput[] {
+  //TODO: do we need state here?
+  const [keysPressed, setKeysPressed] = useState(new Set<KeyInput>());
+  const allowedKeys = new Set(["w", "a", "s", "d"]);
 
   function handleKeyUp(e: KeyboardEvent) {
     const key = e.key;
     if (allowedKeys.has(key)) {
       setKeysPressed((keys) => {
-        keys.delete(key);
+        keys.delete(key as KeyInput);
         return new Set(keys);
       });
     }
@@ -746,7 +545,7 @@ function useMovement(): Set<string> {
     const key = e.key;
     if (allowedKeys.has(key)) {
       setKeysPressed((keys) => {
-        keys.add(key);
+        keys.add(key as KeyInput);
         return new Set(keys);
       });
     }
@@ -762,7 +561,7 @@ function useMovement(): Set<string> {
     };
   }, []);
 
-  return keysPressed;
+  return Array.from(keysPressed);
 }
 
 createRoot(document.getElementById("root")).render(<App />);
