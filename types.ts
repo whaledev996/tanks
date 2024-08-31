@@ -26,6 +26,7 @@ export interface Client {
 
 export interface Collidable {
   getBoundingBox: () => Box3;
+  handleCollision: (obj: Collidable) => void;
 }
 
 export interface ClientAction {
@@ -44,17 +45,3 @@ export interface Projectile {
   position: Vector3Tuple;
   id: string;
 }
-
-export interface TanksMap {
-  startingPosition: Vector3Tuple;
-  objects: TanksMapObject[];
-}
-
-export interface TanksMapObject {
-  position: Vector3Tuple;
-  geometry: BoxGeometryTuple;
-  texture: string;
-}
-
-// each Game, Tank has an id
-//

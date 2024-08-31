@@ -1,60 +1,12 @@
 import { Canvas, useLoader, useThree, useFrame } from "@react-three/fiber";
 import { createRoot } from "react-dom/client";
-import { forwardRef } from "react";
 import { TextureLoader } from "three/src/loaders/TextureLoader";
-//import { GLTFLoader } from "three/src/loaders/GLTF
-import { ColladaLoader } from "three/examples/jsm/loaders/ColladaLoader";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { GUI } from "dat.gui";
-import THREE, {
-  Box3,
-  Box3Helper,
-  BoxGeometry,
-  CapsuleGeometry,
-  DirectionalLight,
-  Euler,
-  Matrix4,
-  Mesh,
-  MeshBasicMaterial,
-  MirroredRepeatWrapping,
-  Object3D,
-  PlaneGeometry,
-  Quaternion,
-  Raycaster,
-  SpotLight,
-  Texture,
-  Vector2,
-  Vector3,
-  Vector3Tuple,
-  sRGBEncoding,
-} from "three";
+import { DirectionalLight, Mesh, Object3D, Vector3, Vector3Tuple } from "three";
 import React, { useEffect, useState, useRef } from "react";
-import {
-  Action,
-  ClientAction,
-  ClientActions,
-  GameState,
-  KeyInput,
-  Projectile,
-  TankState,
-  TanksMapObject,
-} from "./types";
-import { map1 } from "./map";
+import { ClientAction, GameState, KeyInput, TankState } from "./types";
+import { map1, TanksMapObject } from "./map";
 import { Game as TankGame } from "./game";
-import { is } from "@react-three/fiber/dist/declarations/src/core/utils";
-import {
-  CAPSULE_LENGTH,
-  CAPSULE_RADIAL_SEGMENTS,
-  CAPSULE_RADIUS,
-  CAPSULE_SEGMENTS,
-  TanksProjectile,
-} from "./projectile";
-
-function generateUniqueId() {
-  const timestamp = Date.now().toString(36); // Convert timestamp to base36 string
-  const randomString = Math.random().toString(36).substr(2, 5); // Generate random string
-  return timestamp + randomString; // Concatenate timestamp and random string
-}
 
 function App() {
   const [gameId, setGameId] = useState("");
@@ -220,7 +172,6 @@ function Game(props: GameProps) {
   }
 
   function handleMouseDown(e: MouseEvent) {
-    console.log(mousePos.current.toArray());
     if (game.current) {
       // TODO: make passing 0 less ugly here
       game.current.handleInput(

@@ -8,8 +8,9 @@ import {
   SkinnedMesh,
   Vector3Tuple,
 } from "three";
-import { Action, Collidable, TanksMap } from "./types";
+import { Action, Collidable, KeyInput } from "./types";
 import { TanksProjectile } from "./projectile";
+import { TanksMap, TanksMapObject } from "./map";
 
 export const TANK_WIDTH = 1.005;
 export const TANK_HEIGHT = 1.005;
@@ -48,7 +49,6 @@ export class PlayerTank implements Collidable {
   boundingBox: Box3;
   cannon: Object3D | null;
   projectiles: TanksProjectile[];
-  isIntersectingMap: boolean;
 
   constructor(obj: Group, map: TanksMap) {
     this.ghostTank = new Mesh(
@@ -66,7 +66,6 @@ export class PlayerTank implements Collidable {
     this.map = map;
     this.tank = obj;
     this.projectiles = [];
-    this.isIntersectingMap = false;
   }
 
   getBoundingBox(): Box3 {
@@ -74,31 +73,9 @@ export class PlayerTank implements Collidable {
     return this.boundingBox;
   }
 
-  isCollision(): boolean {
-    this.boundingBox.setFromObject(this.ghostTank);
-    for (
-      let mapObjIdx = 0;
-      mapObjIdx < this.map.objects.length;
-      mapObjIdx += 1
-    ) {
-      let mapObj = this.map.objects[mapObjIdx];
-
-      // TODO: speed this up, should probably pre-calculate this
-      _v0.set(...mapObj.position);
-      _v1.set(...mapObj.geometry);
-      _b0.setFromCenterAndSize(_v0, _v1);
-
-      const doesIntersect = this.boundingBox.intersectsBox(_b0);
-      if (doesIntersect) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   move(units: number) {
     this.ghostTank.translateY(units);
-    if (this.isIntersectingMap) {
+    if (this.isIntersectingMap()) {
       this.ghostTank.position.set(...this.tank.position.toArray());
     } else {
       this.tank.translateY(units);
@@ -144,11 +121,34 @@ export class PlayerTank implements Collidable {
     );
   }
 
+  isIntersectingMap(): boolean {
+    for (let i = 0; i < this.map.objects.length; i += 1) {
+      const mapObj = this.map.objects[i];
+      const isColliding = this.getBoundingBox().intersectsBox(
+        mapObj.getBoundingBox()
+      );
+      if (isColliding) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   // TODO: not sure if this is the correct design
   moveProjectiles(delta: number) {
+    this.projectiles = this.projectiles.filter((p) => p.bounces < 2);
     this.projectiles.forEach((p) => {
       p.move(TANK_PROJECTILE_SPEED * delta);
     });
+  }
+
+  handleCollision(obj: Collidable) {}
+
+  step(keysPressed: KeyInput[], delta: number) {
+    keysPressed.forEach((input) => {
+      this.handleInput(input, delta);
+    });
+    this.moveProjectiles(delta);
   }
 
   handleInput(action: Action, delta: number) {

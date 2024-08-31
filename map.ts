@@ -10,7 +10,7 @@ export interface TanksMap {
   objects: TanksMapObject[];
 }
 
-class TanksMapObject implements Collidable {
+export class TanksMapObject implements Collidable {
   position: Vector3Tuple;
   geometry: BoxGeometryTuple;
   texture: string;
@@ -25,12 +25,14 @@ class TanksMapObject implements Collidable {
     this.texture = params.texture;
   }
 
-  getBoundingBox() {
+  getBoundingBox(): Box3 {
     _v0.set(...this.position);
     _v1.set(...this.geometry);
     _b0.setFromCenterAndSize(_v0, _v1);
     return _b0;
   }
+
+  handleCollision(obj: Collidable) {}
 }
 
 // LEVEL 1!

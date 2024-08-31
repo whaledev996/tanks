@@ -5,18 +5,14 @@
 // an array of enemy tanks?
 // should send events to server and reconcile
 //
-const _v0 = new Vector3();
-const _v1 = new Vector3();
-const _b0 = new Box3();
-
-import { Box3, Group, Vector3 } from "three";
+import { Group } from "three";
 import { PlayerTank } from "./playertank";
-import { Action, KeyInput, TanksMap } from "./types";
+import { Action, Collidable, KeyInput } from "./types";
+import { TanksMap } from "./map";
 
 export class Game {
   currentMap: TanksMap;
   playerTank: PlayerTank;
-  // playerTanks: PlayerTank[];
   gameId: string;
   clientId: string;
 
@@ -26,34 +22,33 @@ export class Game {
   }
 
   checkCollisions() {
-    for (
-      let mapObjIdx = 0;
-      mapObjIdx < this.currentMap.objects.length;
-      mapObjIdx += 1
-    ) {
-      let mapObj = this.currentMap.objects[mapObjIdx];
+    const collidableObjects: Collidable[] = [
+      this.playerTank,
+      ...this.playerTank.projectiles,
+      ...this.currentMap.objects,
+    ];
+    for (let i = 0; i < collidableObjects.length; i += 1) {
+      for (let j = i + 1; j < collidableObjects.length; j += 1) {
+        const firstObj = collidableObjects[i];
+        const secondObj = collidableObjects[j];
 
-      // TODO: speed this up, should probably pre-calculate this
-      _v0.set(...mapObj.position);
-      _v1.set(...mapObj.geometry);
-      _b0.setFromCenterAndSize(_v0, _v1);
-
-      const playerBoundingBox = this.playerTank.getBoundingBox();
-
-      const isColliding = playerBoundingBox.intersectsBox(_b0);
-      if (isColliding) console.log(this.playerTank.isIntersectingMap);
+        const isColliding = firstObj
+          .getBoundingBox()
+          .intersectsBox(secondObj.getBoundingBox());
+        if (isColliding) {
+          firstObj.handleCollision(secondObj);
+        }
+      }
     }
   }
 
   // game loop goes here, call this with delta=1/FPS
   step(keysPressed: KeyInput[], delta: number) {
-    keysPressed.forEach((input) => {
-      this.handleInput(input, delta);
-    });
-    this.playerTank.moveProjectiles(delta);
+    this.playerTank.step(keysPressed, delta);
     this.checkCollisions();
   }
 
+  // TODO: need to refactor this
   handleInput(action: Action, delta: number) {
     this.playerTank.handleInput(action, delta);
   }
