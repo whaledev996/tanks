@@ -132,7 +132,7 @@ function Game(props: GameProps) {
     rotation: 0,
     sequence: 0,
   });
-  const [hasAddedProjectile, setHasAddedProjectile] = useState(false);
+  const [numProjectiles, setNumProjectiles] = useState(0);
 
   // a list of unacknowledged actions?
   const clientActions = useRef<ClientAction[]>([]);
@@ -179,8 +179,6 @@ function Game(props: GameProps) {
         0
       );
     }
-    // TODO: need to fix this projectile hack
-    setHasAddedProjectile((old) => !old);
   }
 
   function handleWindowResize() {
@@ -359,6 +357,9 @@ function Game(props: GameProps) {
   useFrame((state, delta, xrFrame) => {
     // This function runs at the native refresh rate inside of a shared render-loop
     if (game.current) {
+      if (game.current.playerTank.projectiles.length != numProjectiles) {
+        setNumProjectiles(game.current.playerTank.projectiles.length);
+      }
       game.current.step(keysPressed, delta);
       //sendToClient(Array.from(keysPressed));
       //serverReconcilation(delta);
