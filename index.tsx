@@ -124,6 +124,11 @@ function Game(props: GameProps) {
       scene.scale.set(5, 5, 5);
       scene.position.set(...map1.startingPosition);
       game.current = new TankGame(map1, scene);
+
+      // TODO: hack to get screen to update immediately when projectiles explode
+      game.current.playerTank.dispose = () => {
+        setNumProjectiles((numProjectiles) => (numProjectiles -= 1));
+      };
     });
   }, []);
 
@@ -132,6 +137,7 @@ function Game(props: GameProps) {
     rotation: 0,
     sequence: 0,
   });
+
   const [numProjectiles, setNumProjectiles] = useState(0);
 
   // a list of unacknowledged actions?
@@ -178,6 +184,8 @@ function Game(props: GameProps) {
         { eventType: "mousedown", position: mousePos.current.toArray() },
         0
       );
+      setNumProjectiles((projectileCount) => (projectileCount += 1));
+      // setProjectileList(game.current.playerTank.projectiles.slice());
     }
   }
 
@@ -357,17 +365,10 @@ function Game(props: GameProps) {
   useFrame((state, delta, xrFrame) => {
     // This function runs at the native refresh rate inside of a shared render-loop
     if (game.current) {
-      if (game.current.playerTank.projectiles.length != numProjectiles) {
-        setNumProjectiles(game.current.playerTank.projectiles.length);
-      }
       game.current.step(keysPressed, delta);
       //sendToClient(Array.from(keysPressed));
       //serverReconcilation(delta);
     }
-  });
-
-  const projectileList = game.current?.playerTank.projectiles.map((p) => {
-    return <primitive key={p.projectile.uuid} object={p.projectile} />;
   });
 
   return (
@@ -387,7 +388,10 @@ function Game(props: GameProps) {
         />
       )}
       {game.current && <primitive object={game.current.playerTank.tank} />}
-      {projectileList}
+      {game.current &&
+        game.current.playerTank.projectiles.map((p) => {
+          return <primitive key={p.projectile.uuid} object={p.projectile} />;
+        })}
     </>
   );
 }
@@ -433,7 +437,13 @@ function OtherTank(props: { position: Vector3Tuple; rotation: number }) {
   );
 }
 
-const Box = function (props: TanksMapObject) {
+const Box = function (props: {
+  // TODO: lol... we can change this later
+  [k in keyof TanksMapObject as Exclude<
+    k,
+    "getBoundingBox" | "handleCollision"
+  >]: TanksMapObject[k];
+}) {
   const woodMap = useLoader(TextureLoader, props.texture);
   return (
     <mesh position={props.position}>

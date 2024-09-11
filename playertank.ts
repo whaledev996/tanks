@@ -49,6 +49,7 @@ export class PlayerTank implements Collidable {
   boundingBox: Box3;
   cannon: Object3D | null;
   projectiles: TanksProjectile[];
+  dispose: () => void;
 
   constructor(obj: Group, map: TanksMap) {
     this.ghostTank = new Mesh(
@@ -66,6 +67,7 @@ export class PlayerTank implements Collidable {
     this.map = map;
     this.tank = obj;
     this.projectiles = [];
+    this.dispose = () => {};
   }
 
   getBoundingBox(): Box3 {
@@ -136,7 +138,6 @@ export class PlayerTank implements Collidable {
 
   // TODO: not sure if this is the correct design
   moveProjectiles(delta: number) {
-    this.projectiles = this.projectiles.filter((p) => p.bounces < 2);
     this.projectiles.forEach((p) => {
       p.move(TANK_PROJECTILE_SPEED * delta);
     });
@@ -147,6 +148,13 @@ export class PlayerTank implements Collidable {
   step(keysPressed: KeyInput[], delta: number) {
     keysPressed.forEach((input) => {
       this.handleInput(input, delta);
+    });
+    this.projectiles = this.projectiles.filter((p) => {
+      if (p.bounces < 2) {
+        return true;
+      }
+      this.dispose();
+      return false;
     });
     this.moveProjectiles(delta);
   }
