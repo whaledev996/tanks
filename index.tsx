@@ -109,9 +109,6 @@ interface GameProps {
 }
 
 function Game(props: GameProps) {
-  const modelRef = useRef();
-  const turretRef = useRef();
-  const fakeRef = useRef();
   const game = useRef<TankGame>();
 
   // Initialize everything:
@@ -119,7 +116,7 @@ function Game(props: GameProps) {
   // Load Collada model
   useEffect(() => {
     const loader = new GLTFLoader();
-    loader.load("Tanks/tank6.glb", (collada) => {
+    loader.load("Tanks/player_tank_blue.glb", (collada) => {
       const scene = collada.scene;
       scene.scale.set(5, 5, 5);
       scene.position.set(...map1.startingPosition);
@@ -131,6 +128,8 @@ function Game(props: GameProps) {
       };
     });
   }, []);
+
+  const sendToServer = useSocket(processGameState);
 
   const [otherTank, setOtherTank] = useState<TankState>({
     position: [0, 0, 0],
@@ -185,7 +184,6 @@ function Game(props: GameProps) {
         0
       );
       setNumProjectiles((projectileCount) => (projectileCount += 1));
-      // setProjectileList(game.current.playerTank.projectiles.slice());
     }
   }
 
@@ -299,8 +297,6 @@ function Game(props: GameProps) {
         sequence: sequence.current,
       }),
       () => {
-        //const sequence = actions.current[actions.current.length
-        //actions.current.push({ action: action, sequence: sequence.current });
         if (action.length) {
           clientActions.current.push({ action: action, sequence: Date.now() });
         }
@@ -453,7 +449,7 @@ const Box = function (props: {
   );
 };
 
-function useSocket(callback: (obj: any) => void) {
+function useSocket(callback: (gameState: GameState) => void) {
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {

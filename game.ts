@@ -6,7 +6,7 @@
 // should send events to server and reconcile
 //
 import { Group } from "three";
-import { PlayerTank } from "./playertank";
+import { PlayerTank } from "./playerTank";
 import { Action, Collidable, KeyInput } from "./types";
 import { TanksMap } from "./map";
 
@@ -41,6 +41,8 @@ export class Game {
       }
     }
   }
+
+  joinGame() {}
 
   // game loop goes here, call this with delta=1/FPS
   step(keysPressed: KeyInput[], delta: number) {
