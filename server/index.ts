@@ -1,147 +1,128 @@
 import { WebSocketServer } from "ws";
-import { Group, Object3D } from "three";
+import { Group } from "three";
 import { randomBytes } from "crypto";
 import express from "express";
-import { GameState, Action, Client } from "../types";
-import { Game } from "../game";
-import { map1 } from "../map";
+import { KeyInput } from "../types";
+import { Game as TanksGame } from "../game";
+import { TanksMap, map1 } from "../map";
 
-interface TanksServerState {
-  [gameId: string]: GameState;
+class Client extends TanksGame {
+  // TODO: not sure what type this is
+  connection: any;
+  keysPressed: KeyInput[];
+  sequence: number;
+
+  constructor(obj: Group, map: TanksMap, gameId: string, clientId: string) {
+    super(obj, map, gameId, clientId);
+    this.keysPressed = [];
+    this.sequence = 0;
+  }
 }
 
-// class Tank {
-//   id: string;
-//   sequence: number;
-//   obj: Object3D;
-//   movementSpeed: number;
-//   rotationSpeed: number;
-//   connection: any;
-//   delta: number;
-//   keysPressed: string[];
-//
-//   constructor(id: string) {
-//     this.obj = new Object3D();
-//     this.movementSpeed = 2;
-//     this.rotationSpeed = 2;
-//     this.connection = null;
-//     this.id = id;
-//     this.sequence = 0;
-//     this.delta = 1 / 60;
-//     this.keysPressed = [];
-//   }
-//
-//   step() {
-//     if (this.keysPressed.includes("w")) {
-//       this.moveForward();
-//     }
-//     if (this.keysPressed.includes("a")) {
-//       this.rotateLeft();
-//     }
-//     if (this.keysPressed.includes("s")) {
-//       this.moveBackward();
-//     }
-//     if (this.keysPressed.includes("d")) {
-//       this.rotateRight();
-//     }
-//   }
-//
-//   moveForward() {
-//     this.obj.translateY(this.movementSpeed * this.delta);
-//   }
-//
-//   moveBackward() {
-//     this.obj.translateY(-1 * this.movementSpeed * this.delta);
-//   }
-//
-//   rotateLeft() {
-//     this.obj.rotateZ(this.rotationSpeed * this.delta);
-//   }
-//
-//   rotateRight() {
-//     this.obj.rotateZ(-1 * this.rotationSpeed * this.delta);
-//   }
-// }
-//
-// class Game {
-//   id: string;
-//   tanks: { [id: string]: Tank };
-//
-//   constructor(id: string) {
-//     this.id = id;
-//     this.tanks = {};
-//   }
-//
-//   addPlayer(id: string) {
-//     this.tanks[id] = new Tank(id);
-//   }
-//
-//   serialize(): GameState {
-//     const state = {};
-//     Object.values(this.tanks).forEach((tank) => {
-//       state[tank.id] = {
-//         position: [
-//           tank.obj.position.x,
-//           tank.obj.position.y,
-//           tank.obj.position.z,
-//         ],
-//         rotation: tank.obj.rotation.z,
-//         sequence: Date.now(),
-//       };
-//     });
-//     return state;
-//   }
-//
-//   // broadcast game state
-//   step() {
-//     Object.values(this.tanks).forEach((tank) => {
-//       if (tank.connection) {
-//         tank.connection.send(JSON.stringify(this.serialize()));
-//       }
-//     });
-//   }
-// }
+class TanksServerGame {
+  gameId: string;
+  clients: { [clientId: string]: Client };
+
+  constructor(gameId: string) {
+    this.gameId = gameId;
+    this.clients = {};
+  }
+
+  addClient(clientId: string, client: Client) {
+    this.clients[clientId] = client;
+  }
+
+  addConnection(clientId: string, ws: WebSocket) {
+    if (clientId in this.clients) {
+      this.clients[clientId].connection = ws;
+    }
+  }
+
+  hasConnection(clientId: string): boolean {
+    if (clientId in this.clients) {
+      return !!this.clients[clientId].connection;
+    }
+    return false;
+  }
+
+  getClient(clientId: string): Client | null {
+    if (clientId in this.clients) {
+      return this.clients[clientId];
+    }
+    return null;
+  }
+
+  step(delta: number) {
+    for (const [_, client] of Object.entries(this.clients)) {
+      client.step(client.keysPressed, delta);
+    }
+  }
+
+  serialize() {
+    const state = {};
+    // TODO: make this a function within playerTank.ts
+    for (const [clientId, client] of Object.entries(this.clients)) {
+      state[clientId] = {
+        position: [
+          client.playerTank.tank.position.x,
+          client.playerTank.tank.position.y,
+          client.playerTank.tank.position.z,
+        ],
+        rotation: client.playerTank.tank.rotation.z,
+        sequence: Date.now(),
+      };
+    }
+    return state;
+  }
+
+  send() {
+    const state = JSON.stringify(this.serialize());
+    for (const [_, client] of Object.entries(this.clients)) {
+      if (client.connection) {
+        client.connection.send(state);
+      }
+    }
+  }
+}
 
 class TanksServer {
-  games: { [gameId: string]: Game } = {};
+  games: { [gameId: string]: TanksServerGame } = {};
 
   constructor() {
     this.games = {};
   }
 
-  createGame(): Client {
+  createGame() {
     const clientId = randomBytes(8).toString("hex");
     const gameId = randomBytes(10).toString("hex");
-    const game = new Game(map1, new Group());
+    // create the game and first client
+    const game = new TanksServerGame(gameId);
+    const client = new Client(new Group(), map1, gameId, clientId);
+    game.addClient(clientId, client);
+    client.playerTank.tank.position.set(...map1.startingPosition);
     this.games[gameId] = game;
+
+    // TODO: this clientId + gameId mechanism seems too basic
     return { clientId: clientId, gameId: gameId };
   }
 
-  // joinGame(gameId: string): Client | undefined {
-  //   if (gameId in this.games) {
-  //     const game = this.games[gameId];
-  //     const clientId = randomBytes(8).toString("hex");
-  //     game.addPlayer(clientId);
-  //     return { clientId: clientId, gameId: gameId };
-  //   }
-  // }
+  joinGame(gameId: string) {
+    // TODO: perform some auth
+    if (gameId in this.games) {
+      const game = this.games[gameId];
+      const clientId = randomBytes(8).toString("hex");
+      const client = new Client(new Group(), map1, gameId, clientId);
+      game.addClient(clientId, client);
+      return { clientId: clientId, gameId: gameId };
+    }
+  }
 
-  // getPlayerForGame(gameId: string, clientId: string): Tank | undefined {
-  //   if (gameId in this.games) {
-  //     const game = this.games[gameId];
-  //     if (clientId in game.tanks) {
-  //       return game.tanks[clientId];
-  //     }
-  //   }
-  // }
-
-  // serialize(): TanksServerState {
-  //   const state = {};
-  //   for (const [gameId, game] of Object.entries(this.games)) {
-  //     state[gameId] = game.serialize();
-  //   }
-  //   return state;
-  // }
+  getGame(gameId: string): TanksServerGame | null {
+    if (gameId in this.games) {
+      return this.games[gameId];
+    }
+    return null;
+  }
 }
 
 const tanksServer = new TanksServer();
@@ -162,17 +143,17 @@ app.post("/create", (req, res) => {
   res.json(client);
 });
 
-// app.post("/join", (req, res) => {
-//   if (req.body.gameId) {
-//     const gameId = req.body.gameId;
-//     const client = tanksServer.joinGame(gameId);
-//     if (client) {
-//       res.json(client);
-//     } else {
-//       res.status(400).json({ message: "unable to join game" });
-//     }
-//   }
-// });
+app.post("/join", (req, res) => {
+  if (req.body.gameId) {
+    const gameId = req.body.gameId;
+    const client = tanksServer.joinGame(gameId);
+    if (client) {
+      res.json(client);
+    } else {
+      res.status(400).json({ message: "unable to join game" });
+    }
+  }
+});
 
 if (!process.env["VITE"]) {
   app.listen(port, () => {
@@ -194,17 +175,20 @@ wss.on("connection", function connection(ws) {
       const gameId = jsonData["gameId"];
       const clientId = jsonData["clientId"];
       const sequence = jsonData["sequence"];
-      const tank = tanksServer.getPlayerForGame(gameId, clientId);
-      if (tank) {
-        if (tank.connection === null) {
-          tank.connection = ws;
-        }
-        if ("action" in jsonData) {
-          // tank.step(jsonData['action']);
-          tank.keysPressed = jsonData["action"];
-          ////console.log(`received sequence ${sequence}`)
-          if (sequence > tank.sequence) {
-            tank.sequence = sequence;
+
+      const game = tanksServer.getGame(gameId);
+      if (game) {
+        const client = game.getClient(clientId);
+        if (client) {
+          if (!client.connection) {
+            client.connection = ws;
+          }
+          if ("action" in jsonData) {
+            const keysPressed = jsonData["action"];
+            if (sequence > client.sequence) {
+              client.sequence = sequence;
+              client.keysPressed = keysPressed;
+            }
           }
         }
       }
@@ -212,29 +196,16 @@ wss.on("connection", function connection(ws) {
   });
 });
 
-// const loader = new ColladaLoader();
-// loader.load("test.dae", (collada) => {
-//   console.log(collada);
-// });
-
-// server game loop
-// 60 fps game loop to calculate physics
-//setInterval(function() {
-
-//}, 1000 / 60)
-
 // every 100 ms send game state to clients
 let tick = 0;
-// setInterval(function () {
-//   tick++;
-//   Object.values(tanksServer.games).forEach((game) => {
-//     if (tick % 10 == 0) {
-//       game.step();
-//       // game.send()
-//     }
-//     Object.values(game.tanks).forEach((tank) => {
-//       tank.step();
-//       // game.step()
-//     });
-//   });
-// }, 1000 / 60);
+const delta = 1 / 60;
+setInterval(function () {
+  tick++;
+  Object.values(tanksServer.games).forEach((game) => {
+    if (tick % 10 == 0) {
+      console.log(game.serialize());
+      game.send();
+    }
+    game.step(delta);
+  });
+}, 1000 / 60);

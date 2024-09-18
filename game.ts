@@ -16,9 +16,11 @@ export class Game {
   gameId: string;
   clientId: string;
 
-  constructor(map: TanksMap, obj: Group) {
+  constructor(obj: Group, map: TanksMap, gameId: string, clientId: string) {
     this.currentMap = map;
     this.playerTank = new PlayerTank(obj, map);
+    this.gameId = gameId;
+    this.clientId = clientId;
   }
 
   checkCollisions() {

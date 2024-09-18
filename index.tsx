@@ -120,7 +120,7 @@ function Game(props: GameProps) {
       const scene = collada.scene;
       scene.scale.set(5, 5, 5);
       scene.position.set(...map1.startingPosition);
-      game.current = new TankGame(map1, scene);
+      game.current = new TankGame(scene, map1, props.gameId, props.clientId);
 
       // TODO: hack to get screen to update immediately when projectiles explode
       game.current.playerTank.dispose = () => {
@@ -128,8 +128,6 @@ function Game(props: GameProps) {
       };
     });
   }, []);
-
-  const sendToServer = useSocket(processGameState);
 
   const [otherTank, setOtherTank] = useState<TankState>({
     position: [0, 0, 0],
@@ -228,8 +226,8 @@ function Game(props: GameProps) {
   // actions.current = [];
   //}
   function processGameState(gameState: GameState): any {
-    // console.log("processing game state");
     for (const [clientId, tankState] of Object.entries(gameState)) {
+      // if we are processing this tank
       if (clientId === props.clientId) {
         serverState.current = tankState;
         // this current client
@@ -284,7 +282,7 @@ function Game(props: GameProps) {
   }
   const sendMessage = useSocket(processGameState);
 
-  function sendToClient(action: string[]) {
+  function sendToServer(action: string[]) {
     //const sequence = actions.current.length
     //  ? actions.current[actions.current.length - 1].sequence + 1
     //  : 1;
@@ -361,8 +359,12 @@ function Game(props: GameProps) {
   useFrame((state, delta, xrFrame) => {
     // This function runs at the native refresh rate inside of a shared render-loop
     if (game.current) {
+      console.log(game.current.playerTank.tank.position);
+      console.log(game.current.playerTank.tank.rotation);
+      console.log(game.current.playerTank.ghostTank.position);
+      console.log(game.current.playerTank.ghostTank.rotation);
       game.current.step(keysPressed, delta);
-      //sendToClient(Array.from(keysPressed));
+      sendToServer(Array.from(keysPressed));
       //serverReconcilation(delta);
     }
   });
