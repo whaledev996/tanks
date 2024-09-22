@@ -199,16 +199,20 @@ wss.on("connection", function connection(ws) {
   });
 });
 
-// every 100 ms send game state to clients
 let tick = 0;
-const delta = 1 / 60;
+const secondsPerFrame = 1 / 60;
+const millisecondsPerFrame = 1000 * secondsPerFrame;
+
+// how many frames do we wait until we send an update?
+const numFramesUntilUpdate = 10;
+
 setInterval(function () {
   tick++;
   Object.values(tanksServer.games).forEach((game) => {
-    if (tick % 10 == 0) {
+    if (tick % numFramesUntilUpdate == 0) {
       console.log(game.serialize());
       game.send();
     }
-    game.step(delta);
+    game.step(secondsPerFrame);
   });
-}, 1000 / 60);
+}, millisecondsPerFrame);

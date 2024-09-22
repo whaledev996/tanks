@@ -7,6 +7,7 @@ const _b0 = new Box3();
 
 export interface TanksMap {
   startingPosition: Vector3Tuple;
+  secondStartingPosition: Vector3Tuple;
   objects: TanksMapObject[];
 }
 
@@ -38,6 +39,7 @@ export class TanksMapObject implements Collidable {
 // LEVEL 1!
 export const map1: TanksMap = {
   startingPosition: [-10, 0, 0],
+  secondStartingPosition: [-10, -5, 0],
   objects: [
     new TanksMapObject({
       position: [0, 5, 0],

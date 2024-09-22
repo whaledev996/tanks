@@ -2,7 +2,14 @@ import { Canvas, useLoader, useThree, useFrame } from "@react-three/fiber";
 import { createRoot } from "react-dom/client";
 import { TextureLoader } from "three/src/loaders/TextureLoader";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { DirectionalLight, Mesh, Object3D, Vector3, Vector3Tuple } from "three";
+import {
+  DirectionalLight,
+  Group,
+  Mesh,
+  Object3D,
+  Vector3,
+  Vector3Tuple,
+} from "three";
 import React, { useEffect, useState, useRef } from "react";
 import { ClientAction, GameState, KeyInput, TankState } from "./types";
 import { map1, TanksMapObject } from "./map";
@@ -130,9 +137,10 @@ function Game(props: GameProps) {
     });
   }, []);
 
-  const [otherTank, setOtherTank] = useState<TankState>({
-    position: [0, 0, 0],
-    rotation: 0,
+  // TODO: create a proper type for this
+  const [otherTank, setOtherTank] = useState<any>({
+    position: null,
+    rotation: null,
     timestamp: 0,
   });
 
@@ -275,7 +283,11 @@ function Game(props: GameProps) {
         clientActions.current = newClientActions;
       } else {
         // this is another client
-        setOtherTank(tankState);
+        setOtherTank({
+          position: tankState.position,
+          rotation: tankState.rotation,
+          timestamp: tankState.rotation,
+        });
       }
     }
   }
@@ -317,12 +329,7 @@ function Game(props: GameProps) {
           texture={box.texture}
         />
       ))}
-      {otherTank.timestamp !== 0 && (
-        <OtherTank
-          rotation={otherTank.rotation}
-          position={otherTank.position}
-        />
-      )}
+      <OtherTank rotation={otherTank.rotation} position={otherTank.position} />
       {game.current && <primitive object={game.current.playerTank.tank} />}
       {game.current &&
         game.current.playerTank.projectiles.map((p) => {
@@ -339,37 +346,42 @@ function Light() {
   );
 }
 
-function OtherTank(props: { position: Vector3Tuple; rotation: number }) {
+function OtherTank(props: { position?: Vector3Tuple; rotation?: number }) {
   const meshRef = useRef<Mesh>(null);
+  const otherTankModel = useRef<Group | null>(null);
+
+  useEffect(() => {
+    const loader = new GLTFLoader();
+    // preload other tank model
+    loader.load("Tanks/player_tank_red.glb", (collada) => {
+      const scene = collada.scene;
+      scene.scale.set(5, 5, 5);
+      //scene.position.set(...props.initialPosition);
+      otherTankModel.current = scene;
+    });
+  }, []);
 
   // given current ps and future pos, how do we get movement?
   //
   // meshRef.current.trans
   //
-  //  useFrame((state, delta, xrFrame) => {
   useFrame((state, delta, xrFrame) => {
-    if (meshRef.current) {
-      meshRef.current.position.lerp(
-        new Vector3(props.position[0], props.position[1], props.position[2]),
+    if (otherTankModel.current && props.position && props.rotation) {
+      otherTankModel.current.position.lerp(
+        new Vector3(...props.position),
         0.05
       );
       const newRotation =
-        meshRef.current.rotation.z +
-        (props.rotation - meshRef.current.rotation.z) * 0.05;
+        otherTankModel.current.rotation.z +
+        (props.rotation - otherTankModel.current.rotation.z) * 0.05;
 
-      meshRef.current.rotation.set(
-        meshRef.current.rotation.x,
-        meshRef.current.rotation.y,
-        newRotation
-      );
+      otherTankModel.current.rotation.z = newRotation;
     }
   });
 
   return (
-    <mesh ref={meshRef}>
-      <boxGeometry args={[1, 1, 0.5]} />
-      <meshBasicMaterial args={[{ color: "red" }]} />
-    </mesh>
+    otherTankModel.current &&
+    props.position && <primitive object={otherTankModel.current} />
   );
 }
 
