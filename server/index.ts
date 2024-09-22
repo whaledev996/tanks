@@ -10,12 +10,12 @@ class Client extends TanksGame {
   // TODO: not sure what type this is
   connection: any;
   keysPressed: KeyInput[];
-  sequence: number;
+  timestamp: number;
 
   constructor(obj: Group, map: TanksMap, gameId: string, clientId: string) {
     super(obj, map, gameId, clientId);
     this.keysPressed = [];
-    this.sequence = 0;
+    this.timestamp = 0;
   }
 }
 
@@ -69,7 +69,7 @@ class TanksServerGame {
           client.playerTank.tank.position.z,
         ],
         rotation: client.playerTank.tank.rotation.z,
-        sequence: Date.now(),
+        timestamp: Date.now(),
       };
     }
     return state;
@@ -170,11 +170,11 @@ wss.on("connection", function connection(ws) {
     if (
       "gameId" in jsonData &&
       "clientId" in jsonData &&
-      "sequence" in jsonData
+      "timestamp" in jsonData
     ) {
       const gameId = jsonData["gameId"];
       const clientId = jsonData["clientId"];
-      const sequence = jsonData["sequence"];
+      const timestamp = jsonData["timestamp"];
 
       const game = tanksServer.getGame(gameId);
       if (game) {
@@ -185,8 +185,11 @@ wss.on("connection", function connection(ws) {
           }
           if ("action" in jsonData) {
             const keysPressed = jsonData["action"];
-            if (sequence > client.sequence) {
-              client.sequence = sequence;
+
+            // make sure we do not process messages out of order
+            // TODO: do we need this??
+            if (timestamp > client.timestamp) {
+              client.timestamp = timestamp;
               client.keysPressed = keysPressed;
             }
           }

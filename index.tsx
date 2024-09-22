@@ -7,6 +7,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { ClientAction, GameState, KeyInput, TankState } from "./types";
 import { map1, TanksMapObject } from "./map";
 import { Game as TankGame } from "./game";
+import { TANK_MOVEMENT_SPEED, TANK_ROTATION_SPEED } from "./playerTank";
 
 function App() {
   const [gameId, setGameId] = useState("");
@@ -132,22 +133,23 @@ function Game(props: GameProps) {
   const [otherTank, setOtherTank] = useState<TankState>({
     position: [0, 0, 0],
     rotation: 0,
-    sequence: 0,
+    timestamp: 0,
   });
 
   const [numProjectiles, setNumProjectiles] = useState(0);
+
+  const secondsPerFrame = useRef(0);
 
   // a list of unacknowledged actions?
   const clientActions = useRef<ClientAction[]>([]);
   const serverState = useRef<TankState>({
     position: [0, 0, 0],
-    sequence: 0,
     rotation: 0,
+    timestamp: 0,
   });
 
   const state = useThree();
 
-  const sequence = useRef<number>(0);
   const _v0 = useRef<Vector3>(new Vector3());
   const mousePos = useRef<Vector3>(new Vector3());
   const keysPressed = useMovement();
@@ -226,54 +228,51 @@ function Game(props: GameProps) {
   // actions.current = [];
   //}
   function processGameState(gameState: GameState): any {
+    console.log(gameState);
     for (const [clientId, tankState] of Object.entries(gameState)) {
       // if we are processing this tank
       if (clientId === props.clientId) {
-        serverState.current = tankState;
-        // this current client
-        // reconcile this tanks position
-        // compute theoretical state of this tank
-        // get position from tank state
-        // get sequence from tank state
-        // purge client actions array
-        //const dummyObj = new Object3D();
-        //const serverPosition = tankState.position;
-        // dummyObj.position.x = tankState.position.x;
-        //dummyObj.position.set(
-        //  serverPosition[0],
-        //  serverPosition[1],
-        //  serverPosition[2]
-        //);
-        //const serverSequence = tankState.sequence;
-        //console.log(tankState);
-        //console.log(actions.current);
-        //actions.current = actions.current.filter(
-        //  (clientAction) => clientAction.sequence > serverSequence
-        //);
-        //actions.current.forEach((clientAction) => {
-        //  if (clientAction.action.includes("w")) {
-        //    dummyObj.translateY(movementSpeed);
-        //  }
-        //  if (clientAction.action.includes("s")) {
-        //    dummyObj.translateY(-1 * movementSpeed);
-        //  }
-        //  if (clientAction.action === "a") {
-        //    dummyObj.rotateZ(rotationSpeed);
-        //  }
-        //  if (clientAction.action === "d") {
-        //    dummyObj.rotateZ(-1 * rotationSpeed);
-        //  }
-        //  // literally update position to theoretical position
-        //  // meshRef.position.set
-        //  // meshRef.current.position.
-        //  //if (meshRef.current) {
-        //  //  meshRef.current.position.set(
-        //  //    dummyObj.position.x,
-        //  //    dummyObj.position.y,
-        //  //    dummyObj.position.z
-        //  //  );
-        //  //}
-        //});
+        console.log("RUNNING");
+        const dummyObj = new Object3D();
+        dummyObj.position.x = tankState.position[0];
+        dummyObj.position.y = tankState.position[1];
+        dummyObj.position.z = tankState.position[2];
+        dummyObj.rotation.z = tankState.rotation;
+        const newClientActions: ClientAction[] = [];
+        clientActions.current.forEach((clientAction) => {
+          if (clientAction.timestamp > tankState.timestamp) {
+            const inputs = clientAction.action;
+            if (inputs.includes("w")) {
+              dummyObj.translateY(
+                TANK_MOVEMENT_SPEED * secondsPerFrame.current
+              );
+            }
+            if (inputs.includes("s")) {
+              dummyObj.translateY(
+                -1 * TANK_MOVEMENT_SPEED * secondsPerFrame.current
+              );
+            }
+            if (inputs.includes("a")) {
+              dummyObj.rotateZ(TANK_ROTATION_SPEED * secondsPerFrame.current);
+            }
+            if (inputs.includes("d")) {
+              dummyObj.rotateZ(
+                -1 * TANK_ROTATION_SPEED * secondsPerFrame.current
+              );
+            }
+            newClientActions.push(clientAction);
+          }
+        });
+        if (game.current) {
+          game.current.playerTank.serverPositionAdjustment(
+            dummyObj.position.toArray(),
+            dummyObj.rotation.z
+          );
+          console.log(
+            `adjusting client position [${game.current.playerTank.tank.position.x}, ${game.current.playerTank.tank.position.y}, ${game.current.playerTank.tank.position.z}] to [${dummyObj.position.x}, ${dummyObj.position.y}, ${dummyObj.position.z}]`
+          );
+        }
+        clientActions.current = newClientActions;
       } else {
         // this is another client
         setOtherTank(tankState);
@@ -283,89 +282,28 @@ function Game(props: GameProps) {
   const sendMessage = useSocket(processGameState);
 
   function sendToServer(action: string[]) {
-    //const sequence = actions.current.length
-    //  ? actions.current[actions.current.length - 1].sequence + 1
-    //  : 1;
-    sequence.current += 1;
+    const timestamp = Date.now();
     sendMessage(
       JSON.stringify({
         action: action,
         clientId: props.clientId,
         gameId: props.gameId,
-        sequence: sequence.current,
+        timestamp: timestamp,
       }),
       () => {
         if (action.length) {
-          clientActions.current.push({ action: action, sequence: Date.now() });
+          clientActions.current.push({ action: action, timestamp: timestamp });
         }
       }
     );
   }
 
-  function serverReconcilation(delta) {
-    if (serverState.current && clientActions.current.length) {
-      // filter out all client actions that occurred before
-      // clientActions.current = clientActions.current.filter(
-      //   (clientAction) => clientAction.sequence > serverState.current?.sequence
-      // );
-      // play back all existing clientActions on the serverState to get the new state
-      //console.log(`received ${serverState.current.position} as server object`);
-      const dummyObj = new Object3D();
-      dummyObj.position.x = serverState.current.position[0];
-      dummyObj.position.y = serverState.current.position[1];
-      dummyObj.position.z = serverState.current.position[2];
-      dummyObj.rotation.z = serverState.current.rotation;
-      const newClientActions: ClientAction[] = [];
-      clientActions.current.forEach((clientAction) => {
-        if (clientAction.sequence > serverState.current.sequence) {
-          const inputs = clientAction.action;
-          if (inputs.includes("w")) {
-            dummyObj.translateY(movementSpeed * delta);
-          }
-          if (inputs.includes("s")) {
-            dummyObj.translateY(-1 * movementSpeed * delta);
-          }
-          if (inputs.includes("a")) {
-            dummyObj.rotateZ(rotationSpeed * delta);
-          }
-          if (inputs.includes("d")) {
-            dummyObj.rotateZ(-1 * rotationSpeed * delta);
-          }
-          newClientActions.push(clientAction);
-        }
-      });
-      if (meshRef.current) {
-        console.log(
-          `adjusting client position [${meshRef.current.position.x}, ${meshRef.current.position.y}, ${meshRef.current.position.z}] to [${dummyObj.position.x}, ${dummyObj.position.y}, ${dummyObj.position.z}]`
-        );
-        //meshRef.current.position.x = dummyObj.position.x;
-        //meshRef.current.position.y = dummyObj.position.y;
-        //meshRef.current.position.z = dummyObj.position.z;
-        meshRef.current.position.set(
-          dummyObj.position.x,
-          dummyObj.position.y,
-          dummyObj.position.z
-        );
-        meshRef.current.rotation.set(
-          meshRef.current.rotation.x,
-          meshRef.current.rotation.y,
-          dummyObj.rotation.z
-        );
-      }
-      clientActions.current = newClientActions;
-    }
-  }
-
   useFrame((state, delta, xrFrame) => {
     // This function runs at the native refresh rate inside of a shared render-loop
     if (game.current) {
-      console.log(game.current.playerTank.tank.position);
-      console.log(game.current.playerTank.tank.rotation);
-      console.log(game.current.playerTank.ghostTank.position);
-      console.log(game.current.playerTank.ghostTank.rotation);
       game.current.step(keysPressed, delta);
       sendToServer(Array.from(keysPressed));
-      //serverReconcilation(delta);
+      secondsPerFrame.current = delta;
     }
   });
 
@@ -379,7 +317,7 @@ function Game(props: GameProps) {
           texture={box.texture}
         />
       ))}
-      {otherTank.sequence !== 0 && (
+      {otherTank.timestamp !== 0 && (
         <OtherTank
           rotation={otherTank.rotation}
           position={otherTank.position}

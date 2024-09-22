@@ -7,7 +7,7 @@ export interface GameState {
 export interface TankState {
   position: Vector3Tuple;
   rotation: number;
-  sequence: number;
+  timestamp: number;
 }
 
 export type Action = KeyInput | TankMouseEvent;
@@ -31,7 +31,7 @@ export interface Collidable {
 
 export interface ClientAction {
   action: string[];
-  sequence: number;
+  timestamp: number;
 }
 
 export interface ClientActions {

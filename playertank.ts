@@ -12,8 +12,8 @@ import { Action, Collidable, KeyInput } from "./types";
 import { TanksProjectile } from "./projectile";
 import { TanksMap, TanksMapObject } from "./map";
 
-export const TANK_WIDTH = 1.0;
-export const TANK_HEIGHT = 1.0;
+export const TANK_WIDTH = 0.95;
+export const TANK_HEIGHT = 0.95;
 export const TANK_DEPTH = 0.57;
 export const TANK_MOVEMENT_SPEED = 3;
 export const TANK_ROTATION_SPEED = 2;
@@ -115,6 +115,13 @@ export class PlayerTank implements Collidable {
         }
       }
     }
+  }
+
+  serverPositionAdjustment(position: Vector3Tuple, rotation: number) {
+    this.ghostTank.position.set(...position);
+    this.ghostTank.rotation.z = rotation;
+    this.tank.position.set(...position);
+    this.tank.rotation.z = rotation;
   }
 
   handleMouseDown(target: Vector3Tuple) {
