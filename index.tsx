@@ -236,16 +236,17 @@ function Game(props: GameProps) {
   // actions.current = [];
   //}
   function processGameState(gameState: GameState): any {
-    console.log(gameState);
+    // console.log(gameState);
     for (const [clientId, tankState] of Object.entries(gameState)) {
       // if we are processing this tank
       if (clientId === props.clientId) {
-        console.log("RUNNING");
+        // console.log("RUNNING");
         const dummyObj = new Object3D();
         dummyObj.position.x = tankState.position[0];
         dummyObj.position.y = tankState.position[1];
         dummyObj.position.z = tankState.position[2];
         dummyObj.rotation.z = tankState.rotation;
+        console.log(tankState.rotation);
         const newClientActions: ClientAction[] = [];
         clientActions.current.forEach((clientAction) => {
           if (clientAction.timestamp > tankState.timestamp) {
@@ -276,9 +277,9 @@ function Game(props: GameProps) {
             dummyObj.position.toArray(),
             dummyObj.rotation.z
           );
-          console.log(
-            `adjusting client position [${game.current.playerTank.tank.position.x}, ${game.current.playerTank.tank.position.y}, ${game.current.playerTank.tank.position.z}] to [${dummyObj.position.x}, ${dummyObj.position.y}, ${dummyObj.position.z}]`
-          );
+          // console.log(
+          //   `adjusting client position [${game.current.playerTank.tank.position.x}, ${game.current.playerTank.tank.position.y}, ${game.current.playerTank.tank.position.z}] to [${dummyObj.position.x}, ${dummyObj.position.y}, ${dummyObj.position.z}]`
+          // );
         }
         clientActions.current = newClientActions;
       } else {
@@ -361,20 +362,24 @@ function OtherTank(props: { position?: Vector3Tuple; rotation?: number }) {
     });
   }, []);
 
-  // given current ps and future pos, how do we get movement?
-  //
-  // meshRef.current.trans
-  //
   useFrame((state, delta, xrFrame) => {
     if (otherTankModel.current && props.position && props.rotation) {
       otherTankModel.current.position.lerp(
         new Vector3(...props.position),
         0.05
       );
-      const newRotation =
-        otherTankModel.current.rotation.z +
-        (props.rotation - otherTankModel.current.rotation.z) * 0.05;
 
+      let serverRotation = props.rotation;
+      let currentRotation = otherTankModel.current.rotation.z;
+      let rotationDiff = serverRotation - currentRotation;
+      let newRotation = currentRotation + rotationDiff * 0.05;
+      if (rotationDiff < -Math.PI) {
+        rotationDiff = serverRotation + 2 * Math.PI - currentRotation;
+        newRotation = currentRotation + rotationDiff * 0.05 - 2 * Math.PI;
+      } else if (rotationDiff >= Math.PI) {
+        rotationDiff = currentRotation + 2 * Math.PI - serverRotation;
+        newRotation = currentRotation + 2 * Math.PI - rotationDiff * 0.05;
+      }
       otherTankModel.current.rotation.z = newRotation;
     }
   });
