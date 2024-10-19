@@ -68,6 +68,11 @@ class TanksServerGame {
           client.playerTank.tank.position.y,
           client.playerTank.tank.position.z,
         ],
+        cannonDirection: [
+          client.playerTank.cannonDirection.x,
+          client.playerTank.cannonDirection.y,
+          client.playerTank.cannonDirection.z,
+        ],
         rotation: client.playerTank.tank.rotation.z,
         timestamp: Date.now(),
       };
@@ -184,13 +189,17 @@ wss.on("connection", function connection(ws) {
             client.connection = ws;
           }
           if ("action" in jsonData) {
-            const keysPressed = jsonData["action"];
-
-            // make sure we do not process messages out of order
-            // TODO: do we need this??
-            if (timestamp > client.timestamp) {
-              client.timestamp = timestamp;
-              client.keysPressed = keysPressed;
+            const action = jsonData["action"];
+            if (Array.isArray(action)) {
+              const keysPressed = action;
+              // make sure we do not process messages out of order
+              // TODO: do we need this??
+              if (timestamp > client.timestamp) {
+                client.timestamp = timestamp;
+                client.keysPressed = keysPressed;
+              }
+            } else {
+              client.handleInput(action, 0);
             }
           }
         }

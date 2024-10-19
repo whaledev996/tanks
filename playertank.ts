@@ -49,6 +49,7 @@ export class PlayerTank implements Collidable {
   boundingBox: Box3;
   cannon: Object3D | null;
   projectiles: TanksProjectile[];
+  cannonDirection: Vector3;
   dispose: () => void;
 
   constructor(obj: Group, map: TanksMap) {
@@ -60,9 +61,12 @@ export class PlayerTank implements Collidable {
     try {
       const skinnedMesh = obj.children[0].children[0] as SkinnedMesh;
       this.cannon = skinnedMesh.skeleton.bones[1];
+      console.log(this.cannon);
+      console.log(this.cannon.rotation);
     } catch (e) {
       this.cannon = null;
     }
+    this.cannonDirection = new Vector3(0, 1, 0);
     this.boundingBox = new Box3();
     this.map = map;
     this.tank = obj;
@@ -90,24 +94,28 @@ export class PlayerTank implements Collidable {
   }
 
   handleMouseMove(position: Vector3Tuple) {
-    if (this.cannon) {
-      // let _v2 be a vector from the tank to mouse position
-      this.tank.getWorldPosition(_v0);
-      _v2.set(...position);
-      _v2.x = _v2.x + -1 * _v0.x;
-      _v2.y = _v2.y + -1 * _v0.y;
-      _v2.normalize();
+    // let _v2 be a vector from the tank to mouse position
+    this.tank.getWorldPosition(_v0);
+    _v2.set(...position);
+    _v2.x = _v2.x + -1 * _v0.x;
+    _v2.y = _v2.y + -1 * _v0.y;
+    _v2.normalize();
+    this.cannonDirection.copy(_v2);
+    this.rotateCannonToDirection(_v2);
+  }
 
+  rotateCannonToDirection(dir: Vector3) {
+    if (this.cannon) {
       // angle to rotate cannon is found using dot product
       // of _v2 and the current direction vec of the cannon
       this.cannon.getWorldDirection(_v1);
       _v1.normalize();
-      const rotation = Math.acos(_v2.dot(_v1));
+      const rotation = Math.acos(dir.dot(_v1));
 
       if (!isNaN(rotation)) {
         // calculate cross product of the same vectors
         // to find the direction to rotate
-        _v0.crossVectors(_v1, _v2);
+        _v0.crossVectors(_v1, dir);
         if (_v0.z >= 0) {
           this.cannon.rotateY(rotation);
         } else {
@@ -117,11 +125,17 @@ export class PlayerTank implements Collidable {
     }
   }
 
-  serverPositionAdjustment(position: Vector3Tuple, rotation: number) {
+  serverAdjustment(
+    position: Vector3Tuple,
+    rotation: number,
+    cannonDirection: Vector3Tuple
+  ) {
     this.ghostTank.position.set(...position);
     this.ghostTank.rotation.z = rotation;
     this.tank.position.set(...position);
     this.tank.rotation.z = rotation;
+    _v2.set(...cannonDirection);
+    this.rotateCannonToDirection(_v2);
   }
 
   handleMouseDown(target: Vector3Tuple) {

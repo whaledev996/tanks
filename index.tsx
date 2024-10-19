@@ -11,7 +11,13 @@ import {
   Vector3Tuple,
 } from "three";
 import React, { useEffect, useState, useRef } from "react";
-import { ClientAction, GameState, KeyInput, TankState } from "./types";
+import {
+  ClientAction,
+  ClientPayload,
+  GameState,
+  KeyInput,
+  TankMouseEvent,
+} from "./types";
 import { map1, TanksMapObject } from "./map";
 import { Game as TankGame } from "./game";
 import { TANK_MOVEMENT_SPEED, TANK_ROTATION_SPEED } from "./playerTank";
@@ -118,6 +124,7 @@ interface GameProps {
 
 function Game(props: GameProps) {
   const game = useRef<TankGame>();
+  const partnerTankModel = useRef<Group | null>(null);
 
   // Initialize everything:
   // Game obj, current map
@@ -128,6 +135,7 @@ function Game(props: GameProps) {
       const scene = collada.scene;
       scene.scale.set(5, 5, 5);
       scene.position.set(...map1.startingPosition);
+      // console.log(scene);
       game.current = new TankGame(scene, map1, props.gameId, props.clientId);
 
       // TODO: hack to get screen to update immediately when projectiles explode
@@ -135,26 +143,30 @@ function Game(props: GameProps) {
         setNumProjectiles((numProjectiles) => (numProjectiles -= 1));
       };
     });
+    loader.load("Tanks/player_tank_red.glb", (collada) => {
+      const scene = collada.scene;
+      scene.scale.set(5, 5, 5);
+      partnerTankModel.current = scene;
+    });
   }, []);
 
   // TODO: create a proper type for this
   const [otherTank, setOtherTank] = useState<any>({
     position: null,
     rotation: null,
+    cannonDirection: null,
     timestamp: 0,
   });
 
   const [numProjectiles, setNumProjectiles] = useState(0);
 
+  // TODO: another hack I need to change
+  const [numPartnerTanks, setNumPartnerTanks] = useState(0);
+
   const secondsPerFrame = useRef(0);
 
   // a list of unacknowledged actions?
   const clientActions = useRef<ClientAction[]>([]);
-  const serverState = useRef<TankState>({
-    position: [0, 0, 0],
-    rotation: 0,
-    timestamp: 0,
-  });
 
   const state = useThree();
 
@@ -176,21 +188,25 @@ function Game(props: GameProps) {
   function handleMouseMove(e: MouseEvent) {
     calculateMousePosition();
     if (game.current) {
+      const event: TankMouseEvent = {
+        position: mousePos.current.toArray(),
+        eventType: "mousemove",
+      };
       // TODO: make passing 0 less ugly here
-      game.current.handleInput(
-        { eventType: "mousemove", position: mousePos.current.toArray() },
-        0
-      );
+      game.current.handleInput(event, 0);
+      sendToServer(event);
     }
   }
 
   function handleMouseDown(e: MouseEvent) {
     if (game.current) {
+      const event: TankMouseEvent = {
+        position: mousePos.current.toArray(),
+        eventType: "mousedown",
+      };
       // TODO: make passing 0 less ugly here
-      game.current.handleInput(
-        { eventType: "mousedown", position: mousePos.current.toArray() },
-        0
-      );
+      game.current.handleInput(event, 0);
+      sendToServer(event);
       setNumProjectiles((projectileCount) => (projectileCount += 1));
     }
   }
@@ -241,12 +257,12 @@ function Game(props: GameProps) {
       // if we are processing this tank
       if (clientId === props.clientId) {
         // console.log("RUNNING");
+        // console.log(gameState);
         const dummyObj = new Object3D();
         dummyObj.position.x = tankState.position[0];
         dummyObj.position.y = tankState.position[1];
         dummyObj.position.z = tankState.position[2];
         dummyObj.rotation.z = tankState.rotation;
-        console.log(tankState.rotation);
         const newClientActions: ClientAction[] = [];
         clientActions.current.forEach((clientAction) => {
           if (clientAction.timestamp > tankState.timestamp) {
@@ -273,38 +289,55 @@ function Game(props: GameProps) {
           }
         });
         if (game.current) {
-          game.current.playerTank.serverPositionAdjustment(
-            dummyObj.position.toArray(),
-            dummyObj.rotation.z
+          console.log(
+            `adjusting client cannon direction [${game.current.playerTank.cannonDirection.x}, ${game.current.playerTank.cannonDirection.y}, ${game.current.playerTank.cannonDirection.z}] to [${tankState.cannonDirection[0]}, ${tankState.cannonDirection[1]}, ${tankState.cannonDirection[2]}]`
           );
-          // console.log(
-          //   `adjusting client position [${game.current.playerTank.tank.position.x}, ${game.current.playerTank.tank.position.y}, ${game.current.playerTank.tank.position.z}] to [${dummyObj.position.x}, ${dummyObj.position.y}, ${dummyObj.position.z}]`
-          // );
+          game.current.playerTank.serverAdjustment(
+            dummyObj.position.toArray(),
+            dummyObj.rotation.z,
+            tankState.cannonDirection
+          );
         }
         clientActions.current = newClientActions;
       } else {
         // this is another client
-        setOtherTank({
-          position: tankState.position,
-          rotation: tankState.rotation,
-          timestamp: tankState.rotation,
-        });
+        //setOtherTank({
+        //position: tankState.position,
+        //rotation: tankState.rotation,
+        //cannonDirection: tankState.cannonDirection,
+        //timestamp: tankState.rotation,
+        //});
+        if (game.current) {
+          if (
+            !(clientId in game.current.partnerTanks) &&
+            partnerTankModel.current
+          ) {
+            game.current.joinGame(clientId, partnerTankModel.current);
+            setNumPartnerTanks((numPartnerTanks) => numPartnerTanks + 1);
+          }
+          game.current.updateClient(
+            clientId,
+            tankState.position,
+            tankState.rotation,
+            tankState.cannonDirection
+          );
+        }
       }
     }
   }
   const sendMessage = useSocket(processGameState);
 
-  function sendToServer(action: string[]) {
+  function sendToServer(action: KeyInput[] | TankMouseEvent) {
     const timestamp = Date.now();
     sendMessage(
-      JSON.stringify({
+      {
         action: action,
         clientId: props.clientId,
         gameId: props.gameId,
         timestamp: timestamp,
-      }),
+      },
       () => {
-        if (action.length) {
+        if (Array.isArray(action) && action.length) {
           clientActions.current.push({ action: action, timestamp: timestamp });
         }
       }
@@ -330,7 +363,10 @@ function Game(props: GameProps) {
           texture={box.texture}
         />
       ))}
-      <OtherTank rotation={otherTank.rotation} position={otherTank.position} />
+      {game.current &&
+        Object.values(game.current.partnerTanks).map((p) => {
+          return <primitive object={p.tank} />;
+        })}
       {game.current && <primitive object={game.current.playerTank.tank} />}
       {game.current &&
         game.current.playerTank.projectiles.map((p) => {
@@ -344,49 +380,6 @@ function Light() {
   const ref = useRef<DirectionalLight>(null);
   return (
     <directionalLight ref={ref} position={[0, -3, 10]} args={[0xffffff, 2]} />
-  );
-}
-
-function OtherTank(props: { position?: Vector3Tuple; rotation?: number }) {
-  const meshRef = useRef<Mesh>(null);
-  const otherTankModel = useRef<Group | null>(null);
-
-  useEffect(() => {
-    const loader = new GLTFLoader();
-    // preload other tank model
-    loader.load("Tanks/player_tank_red.glb", (collada) => {
-      const scene = collada.scene;
-      scene.scale.set(5, 5, 5);
-      //scene.position.set(...props.initialPosition);
-      otherTankModel.current = scene;
-    });
-  }, []);
-
-  useFrame((state, delta, xrFrame) => {
-    if (otherTankModel.current && props.position && props.rotation) {
-      otherTankModel.current.position.lerp(
-        new Vector3(...props.position),
-        0.05
-      );
-
-      let serverRotation = props.rotation;
-      let currentRotation = otherTankModel.current.rotation.z;
-      let rotationDiff = serverRotation - currentRotation;
-      let newRotation = currentRotation + rotationDiff * 0.05;
-      if (rotationDiff < -Math.PI) {
-        rotationDiff = serverRotation + 2 * Math.PI - currentRotation;
-        newRotation = currentRotation + rotationDiff * 0.05 - 2 * Math.PI;
-      } else if (rotationDiff >= Math.PI) {
-        rotationDiff = currentRotation + 2 * Math.PI - serverRotation;
-        newRotation = currentRotation + 2 * Math.PI - rotationDiff * 0.05;
-      }
-      otherTankModel.current.rotation.z = newRotation;
-    }
-  });
-
-  return (
-    otherTankModel.current &&
-    props.position && <primitive object={otherTankModel.current} />
   );
 }
 
@@ -418,9 +411,10 @@ function useSocket(callback: (gameState: GameState) => void) {
     return () => ws.current?.close();
   }, []);
 
-  function send(message, callback) {
+  function send(message: ClientPayload, callback) {
     waitForConnection(() => {
-      ws.current?.send(message);
+      const encodedMessage = JSON.stringify(message);
+      ws.current?.send(encodedMessage);
       if (typeof callback !== "undefined") {
         callback();
       }

@@ -7,6 +7,14 @@ export interface GameState {
 export interface TankState {
   position: Vector3Tuple;
   rotation: number;
+  cannonDirection: Vector3Tuple;
+  timestamp: number;
+}
+
+export interface ClientPayload {
+  action: KeyInput[] | TankMouseEvent;
+  clientId: string;
+  gameId: string;
   timestamp: number;
 }
 
