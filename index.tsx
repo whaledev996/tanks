@@ -143,11 +143,6 @@ function Game(props: GameProps) {
         setNumProjectiles((numProjectiles) => (numProjectiles -= 1));
       };
     });
-    loader.load("Tanks/player_tank_red.glb", (collada) => {
-      const scene = collada.scene;
-      scene.scale.set(5, 5, 5);
-      partnerTankModel.current = scene;
-    });
   }, []);
 
   // TODO: create a proper type for this
@@ -308,12 +303,18 @@ function Game(props: GameProps) {
         //timestamp: tankState.rotation,
         //});
         if (game.current) {
-          if (
-            !(clientId in game.current.partnerTanks) &&
-            partnerTankModel.current
-          ) {
-            game.current.joinGame(clientId, partnerTankModel.current);
-            setNumPartnerTanks((numPartnerTanks) => numPartnerTanks + 1);
+          if (!(clientId in game.current.partnerTanks)) {
+            // TODO: do we need to re-create this obj every time?
+            const loader = new GLTFLoader();
+            loader.load("Tanks/player_tank_red.glb", (collada) => {
+              const scene = collada.scene;
+              scene.scale.set(5, 5, 5);
+              scene.position.set(...map1.secondStartingPosition);
+              if (game.current) {
+                game.current.joinGame(clientId, scene);
+                setNumPartnerTanks((numPartnerTanks) => numPartnerTanks + 1);
+              }
+            });
           }
           game.current.updateClient(
             clientId,
