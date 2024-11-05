@@ -6,7 +6,7 @@ import {
   Vector3Tuple,
   Vector3,
 } from "three";
-import { Collidable } from "./types";
+import { Collidable, CollidableType } from "./types";
 
 const _v0 = new Vector3();
 const _v1 = new Vector3();
@@ -19,12 +19,14 @@ export class PartnerTank implements Collidable {
   boundingBox: Box3;
   desiredRotation: number;
   desiredCannonDirection: Vector3Tuple;
+  type: CollidableType;
 
   constructor(obj: Group) {
     this.tank = obj;
     const skinnedMesh = obj.children[0].children[0] as SkinnedMesh;
     this.cannon = skinnedMesh.skeleton.bones[1];
     this.boundingBox = new Box3();
+    this.type = "partnerTank";
   }
 
   // TODO: do we need this?

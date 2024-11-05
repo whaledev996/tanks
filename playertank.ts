@@ -8,9 +8,10 @@ import {
   SkinnedMesh,
   Vector3Tuple,
 } from "three";
-import { Action, Collidable, KeyInput } from "./types";
+import { Action, Collidable, CollidableType, KeyInput } from "./types";
 import { TanksProjectile } from "./projectile";
-import { TanksMap, TanksMapObject } from "./map";
+import { TanksMap } from "./map";
+import { Tank } from "./game";
 
 export const TANK_WIDTH = 0.95;
 export const TANK_HEIGHT = 0.95;
@@ -44,17 +45,19 @@ const _b0 = new Box3();
 // a shared Tank that can be used on the Client and the Server
 export class PlayerTank implements Collidable {
   tank: Group; // store the actual tank model, not needed on the server
-  map: TanksMap;
   ghostTank: Mesh; // invisible object to help handle collisions
   boundingBox: Box3;
   cannon: Object3D | null;
   projectiles: TanksProjectile[];
   cannonDirection: Vector3;
+  type: CollidableType;
   dispose: () => void;
+  map: TanksMap;
+  otherTanks: Tank[];
 
   constructor(obj: Group, map: TanksMap) {
     this.ghostTank = new Mesh(
-      new BoxGeometry(TANK_WIDTH, TANK_HEIGHT, TANK_DEPTH)
+      new BoxGeometry(TANK_WIDTH, TANK_HEIGHT, TANK_DEPTH),
     );
     // if we are running on the browser we shoud have
     // full access to the tank model
@@ -68,10 +71,16 @@ export class PlayerTank implements Collidable {
     }
     this.cannonDirection = new Vector3(0, 1, 0);
     this.boundingBox = new Box3();
-    this.map = map;
     this.tank = obj;
     this.projectiles = [];
+    this.type = "playerTank";
     this.dispose = () => {};
+    this.map = map;
+    this.otherTanks = [];
+  }
+
+  addTank(tank: Tank) {
+    this.otherTanks.push(tank);
   }
 
   getBoundingBox(): Box3 {
@@ -81,7 +90,7 @@ export class PlayerTank implements Collidable {
 
   move(units: number) {
     this.ghostTank.translateY(units);
-    if (this.isIntersectingMap()) {
+    if (this.isIntersectingMapOrTank()) {
       this.ghostTank.position.set(...this.tank.position.toArray());
     } else {
       this.tank.translateY(units);
@@ -128,7 +137,7 @@ export class PlayerTank implements Collidable {
   serverAdjustment(
     position: Vector3Tuple,
     rotation: number,
-    cannonDirection: Vector3Tuple
+    cannonDirection: Vector3Tuple,
   ) {
     this.ghostTank.position.set(...position);
     this.ghostTank.rotation.z = rotation;
@@ -140,15 +149,23 @@ export class PlayerTank implements Collidable {
 
   handleMouseDown(target: Vector3Tuple) {
     this.projectiles.push(
-      new TanksProjectile(this.tank.position.toArray(), target)
+      new TanksProjectile(this.tank.position.toArray(), target),
     );
   }
 
-  isIntersectingMap(): boolean {
+  isIntersectingMapOrTank(): boolean {
     for (let i = 0; i < this.map.objects.length; i += 1) {
       const mapObj = this.map.objects[i];
       const isColliding = this.getBoundingBox().intersectsBox(
-        mapObj.getBoundingBox()
+        mapObj.getBoundingBox(),
+      );
+      if (isColliding) {
+        return true;
+      }
+    }
+    for (const otherTank of this.otherTanks) {
+      const isColliding = this.getBoundingBox().intersectsBox(
+        otherTank.getBoundingBox(),
       );
       if (isColliding) {
         return true;

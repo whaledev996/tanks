@@ -21,6 +21,7 @@ import {
 import { map1, TanksMapObject } from "./map";
 import { Game as TankGame } from "./game";
 import { TANK_MOVEMENT_SPEED, TANK_ROTATION_SPEED } from "./playerTank";
+import { PartnerTank } from "./partnerTank";
 
 function App() {
   const [gameId, setGameId] = useState("");
@@ -264,12 +265,12 @@ function Game(props: GameProps) {
             const inputs = clientAction.action;
             if (inputs.includes("w")) {
               dummyObj.translateY(
-                TANK_MOVEMENT_SPEED * secondsPerFrame.current
+                TANK_MOVEMENT_SPEED * secondsPerFrame.current,
               );
             }
             if (inputs.includes("s")) {
               dummyObj.translateY(
-                -1 * TANK_MOVEMENT_SPEED * secondsPerFrame.current
+                -1 * TANK_MOVEMENT_SPEED * secondsPerFrame.current,
               );
             }
             if (inputs.includes("a")) {
@@ -277,7 +278,7 @@ function Game(props: GameProps) {
             }
             if (inputs.includes("d")) {
               dummyObj.rotateZ(
-                -1 * TANK_ROTATION_SPEED * secondsPerFrame.current
+                -1 * TANK_ROTATION_SPEED * secondsPerFrame.current,
               );
             }
             newClientActions.push(clientAction);
@@ -285,25 +286,18 @@ function Game(props: GameProps) {
         });
         if (game.current) {
           console.log(
-            `adjusting client cannon direction [${game.current.playerTank.cannonDirection.x}, ${game.current.playerTank.cannonDirection.y}, ${game.current.playerTank.cannonDirection.z}] to [${tankState.cannonDirection[0]}, ${tankState.cannonDirection[1]}, ${tankState.cannonDirection[2]}]`
+            `adjusting client cannon direction [${game.current.playerTank.cannonDirection.x}, ${game.current.playerTank.cannonDirection.y}, ${game.current.playerTank.cannonDirection.z}] to [${tankState.cannonDirection[0]}, ${tankState.cannonDirection[1]}, ${tankState.cannonDirection[2]}]`,
           );
           game.current.playerTank.serverAdjustment(
             dummyObj.position.toArray(),
             dummyObj.rotation.z,
-            tankState.cannonDirection
+            tankState.cannonDirection,
           );
         }
         clientActions.current = newClientActions;
       } else {
-        // this is another client
-        //setOtherTank({
-        //position: tankState.position,
-        //rotation: tankState.rotation,
-        //cannonDirection: tankState.cannonDirection,
-        //timestamp: tankState.rotation,
-        //});
         if (game.current) {
-          if (!(clientId in game.current.partnerTanks)) {
+          if (!(clientId in game.current.otherTanks)) {
             // TODO: do we need to re-create this obj every time?
             const loader = new GLTFLoader();
             loader.load("Tanks/player_tank_red.glb", (collada) => {
@@ -311,7 +305,7 @@ function Game(props: GameProps) {
               scene.scale.set(5, 5, 5);
               scene.position.set(...map1.secondStartingPosition);
               if (game.current) {
-                game.current.joinGame(clientId, scene);
+                game.current.joinGame(clientId, new PartnerTank(scene));
                 setNumPartnerTanks((numPartnerTanks) => numPartnerTanks + 1);
               }
             });
@@ -320,7 +314,7 @@ function Game(props: GameProps) {
             clientId,
             tankState.position,
             tankState.rotation,
-            tankState.cannonDirection
+            tankState.cannonDirection,
           );
         }
       }
@@ -341,7 +335,7 @@ function Game(props: GameProps) {
         if (Array.isArray(action) && action.length) {
           clientActions.current.push({ action: action, timestamp: timestamp });
         }
-      }
+      },
     );
   }
 
@@ -362,10 +356,11 @@ function Game(props: GameProps) {
           position={box.position}
           geometry={box.geometry}
           texture={box.texture}
+          type="map"
         />
       ))}
       {game.current &&
-        Object.values(game.current.partnerTanks).map((p) => {
+        Object.values(game.current.otherTanks).map((p) => {
           return <primitive object={p.tank} />;
         })}
       {game.current && <primitive object={game.current.playerTank.tank} />}

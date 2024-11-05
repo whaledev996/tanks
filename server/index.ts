@@ -6,6 +6,8 @@ import { KeyInput } from "../types";
 import { Game as TanksGame } from "../game";
 import { TanksMap, map1 } from "../map";
 
+// class that manages all clients
+
 class Client extends TanksGame {
   // TODO: not sure what type this is
   connection: any;
@@ -117,6 +119,11 @@ class TanksServer {
       const game = this.games[gameId];
       const clientId = randomBytes(8).toString("hex");
       const client = new Client(new Group(), map1, gameId, clientId);
+      Object.values(game.clients).forEach((existingClient) => {
+        existingClient.joinGame(clientId, client.playerTank);
+        client.joinGame(existingClient.clientId, existingClient.playerTank);
+      });
+
       game.addClient(clientId, client);
       return { clientId: clientId, gameId: gameId };
     }

@@ -1,5 +1,5 @@
 import { Box3, Vector3, Vector3Tuple } from "three";
-import { BoxGeometryTuple, Collidable } from "./types";
+import { BoxGeometryTuple, Collidable, CollidableType } from "./types";
 
 const _v0 = new Vector3();
 const _v1 = new Vector3();
@@ -15,6 +15,7 @@ export class TanksMapObject implements Collidable {
   position: Vector3Tuple;
   geometry: BoxGeometryTuple;
   texture: string;
+  type: CollidableType;
 
   constructor(params: {
     position: Vector3Tuple;
@@ -24,6 +25,7 @@ export class TanksMapObject implements Collidable {
     this.position = params.position;
     this.geometry = params.geometry;
     this.texture = params.texture;
+    this.type = "map";
   }
 
   getBoundingBox(): Box3 {

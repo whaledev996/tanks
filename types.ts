@@ -22,6 +22,12 @@ export type Action = KeyInput | TankMouseEvent;
 export type KeyInput = "w" | "a" | "s" | "d";
 export type BoxGeometryTuple = [number, number, number];
 
+export type CollidableType =
+  | "playerTank"
+  | "partnerTank"
+  | "projectile"
+  | "map";
+
 export interface TankMouseEvent {
   position: Vector3Tuple;
   eventType: "mousedown" | "mousemove";
@@ -35,6 +41,7 @@ export interface Client {
 export interface Collidable {
   getBoundingBox: () => Box3;
   handleCollision: (obj: Collidable) => void;
+  type: CollidableType;
 }
 
 export interface ClientAction {

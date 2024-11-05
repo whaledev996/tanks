@@ -6,7 +6,7 @@ import {
   Matrix4,
   Vector3,
 } from "three";
-import { Collidable } from "./types";
+import { Collidable, CollidableType } from "./types";
 import { TanksMapObject } from "./map";
 
 export const CAPSULE_RADIUS = 0.1;
@@ -26,13 +26,14 @@ export class TanksProjectile implements Collidable {
   initialMovement: boolean;
   direction: number;
   bounces: number;
+  type: CollidableType;
 
   constructor(position: Vector3Tuple, target: Vector3Tuple) {
     this.geometry = new CapsuleGeometry(
       CAPSULE_RADIUS,
       CAPSULE_LENGTH,
       CAPSULE_SEGMENTS,
-      CAPSULE_RADIAL_SEGMENTS
+      CAPSULE_RADIAL_SEGMENTS,
     );
     // TODO: do we need this?
     this.geometry.applyMatrix4(_m0.makeRotationX(Math.PI / 2));
@@ -44,6 +45,7 @@ export class TanksProjectile implements Collidable {
     this.initialMovement = true;
     this.direction = 1;
     this.bounces = 0;
+    this.type = "projectile";
   }
 
   getBoundingBox(): Box3 {

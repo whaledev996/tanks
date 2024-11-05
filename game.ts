@@ -11,10 +11,16 @@ import { Action, Collidable, KeyInput } from "./types";
 import { TanksMap } from "./map";
 import { PartnerTank } from "./partnerTank";
 
+export type Tank = PlayerTank | PartnerTank;
+
+export function isPartnerTank(tank: Tank): tank is PartnerTank {
+  return tank.type === "partnerTank";
+}
+
 export class Game {
   currentMap: TanksMap;
   playerTank: PlayerTank;
-  partnerTanks: { [clientId: string]: PartnerTank };
+  otherTanks: { [clientId: string]: PartnerTank | PlayerTank };
   gameId: string;
   clientId: string;
 
@@ -23,13 +29,15 @@ export class Game {
     this.playerTank = new PlayerTank(obj, map);
     this.gameId = gameId;
     this.clientId = clientId;
-    this.partnerTanks = {};
+    this.otherTanks = {};
   }
 
   checkCollisions() {
+    // compute the collision matrix
     const collidableObjects: Collidable[] = [
       this.playerTank,
       ...this.playerTank.projectiles,
+      ...Object.values(this.otherTanks),
       ...this.currentMap.objects,
     ];
     for (let i = 0; i < collidableObjects.length; i += 1) {
@@ -47,30 +55,56 @@ export class Game {
     }
   }
 
-  joinGame(clientId: string, obj: Group) {
-    this.partnerTanks[clientId] = new PartnerTank(obj);
+  isIntersectingMapOrTank(): boolean {
+    for (let i = 0; i < this.currentMap.objects.length; i += 1) {
+      const mapObj = this.currentMap.objects[i];
+      const isColliding = this.playerTank
+        .getBoundingBox()
+        .intersectsBox(mapObj.getBoundingBox());
+      if (isColliding) {
+        return true;
+      }
+    }
+    for (const otherTank of Object.values(this.otherTanks)) {
+      const isColliding = this.playerTank
+        .getBoundingBox()
+        .intersectsBox(otherTank.getBoundingBox());
+      if (isColliding) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  joinGame(clientId: string, tank: PartnerTank | PlayerTank) {
+    this.otherTanks[clientId] = tank;
+    this.playerTank.addTank(tank);
   }
 
   updateClient(
     clientId: string,
     position: Vector3Tuple,
     rotation: number,
-    cannonDirection: Vector3Tuple
+    cannonDirection: Vector3Tuple,
   ) {
-    if (clientId in this.partnerTanks) {
-      const partnerTank = this.partnerTanks[clientId];
-      partnerTank.desiredPosition = position;
-      partnerTank.desiredRotation = rotation;
-      partnerTank.desiredCannonDirection = cannonDirection;
+    if (clientId in this.otherTanks) {
+      const tank = this.otherTanks[clientId];
+      if (isPartnerTank(tank)) {
+        tank.desiredPosition = position;
+        tank.desiredRotation = rotation;
+        tank.desiredCannonDirection = cannonDirection;
+      }
     }
   }
 
   // game loop goes here, call this with delta=1/FPS
   step(keysPressed: KeyInput[], delta: number) {
     this.playerTank.step(keysPressed, delta);
-    Object.values(this.partnerTanks).forEach((partnerTank) =>
-      partnerTank.step()
-    );
+    Object.values(this.otherTanks).forEach((tank) => {
+      if (isPartnerTank(tank)) {
+        tank.step();
+      }
+    });
     this.checkCollisions();
   }
 
