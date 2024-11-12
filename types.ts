@@ -5,10 +5,18 @@ export interface GameState {
 }
 
 export interface TankState {
+  projectiles: Projectile[];
   position: Vector3Tuple;
   rotation: number;
   cannonDirection: Vector3Tuple;
   timestamp: number;
+}
+
+export interface Projectile {
+  direction: number;
+  position: Vector3Tuple;
+  rotation: [number, number];
+  id: number;
 }
 
 export interface ClientPayload {
@@ -52,11 +60,4 @@ export interface ClientAction {
 export interface ClientActions {
   actions: Action[];
   sequence: number;
-}
-
-export interface Projectile {
-  direction: number;
-  target: Vector3Tuple;
-  position: Vector3Tuple;
-  id: string;
 }

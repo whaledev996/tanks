@@ -7,7 +7,7 @@
 //
 import { Group, Vector3Tuple } from "three";
 import { PlayerTank } from "./playerTank";
-import { Action, Collidable, KeyInput } from "./types";
+import { Action, Collidable, KeyInput, TankState } from "./types";
 import { TanksMap } from "./map";
 import { PartnerTank } from "./partnerTank";
 
@@ -81,18 +81,14 @@ export class Game {
     this.playerTank.addTank(tank);
   }
 
-  updateClient(
-    clientId: string,
-    position: Vector3Tuple,
-    rotation: number,
-    cannonDirection: Vector3Tuple,
-  ) {
+  updateClient(clientId: string, state: TankState) {
     if (clientId in this.otherTanks) {
       const tank = this.otherTanks[clientId];
       if (isPartnerTank(tank)) {
-        tank.desiredPosition = position;
-        tank.desiredRotation = rotation;
-        tank.desiredCannonDirection = cannonDirection;
+        tank.desiredPosition = state.position;
+        tank.desiredRotation = state.rotation;
+        tank.desiredCannonDirection = state.cannonDirection;
+        tank.updateProjectiles(state.projectiles);
       }
     }
   }

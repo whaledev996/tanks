@@ -64,6 +64,18 @@ class TanksServerGame {
     const state = {};
     // TODO: make this a function within playerTank.ts
     for (const [clientId, client] of Object.entries(this.clients)) {
+      const projectiles = client.playerTank.projectiles.map((p) => {
+        return {
+          id: p.projectile.geometry.id,
+          position: [
+            p.projectile.position.x,
+            p.projectile.position.y,
+            p.projectile.position.z,
+          ],
+          rotation: [p.projectile.rotation.x, p.projectile.rotation.y],
+          direction: p.direction,
+        };
+      });
       state[clientId] = {
         position: [
           client.playerTank.tank.position.x,
@@ -75,6 +87,7 @@ class TanksServerGame {
           client.playerTank.cannonDirection.y,
           client.playerTank.cannonDirection.z,
         ],
+        projectiles: projectiles,
         rotation: client.playerTank.tank.rotation.z,
         timestamp: Date.now(),
       };

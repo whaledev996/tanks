@@ -18,6 +18,54 @@ const _v0 = new Vector3();
 const _v1 = new Vector3();
 const _m0 = new Matrix4();
 
+export class PartnerTanksProjectile implements Collidable {
+  projectile: Mesh;
+  geometry: CapsuleGeometry;
+  desiredPosition: Vector3Tuple;
+  desiredRotationX: number;
+  desiredRotationY: number;
+  desiredDirection: number;
+  type: CollidableType;
+  boundingBox: Box3;
+  id: number;
+
+  constructor(id: number) {
+    this.type = "projectile";
+    this.geometry = new CapsuleGeometry(
+      CAPSULE_RADIUS,
+      CAPSULE_LENGTH,
+      CAPSULE_SEGMENTS,
+      CAPSULE_RADIAL_SEGMENTS,
+    );
+    this.geometry.applyMatrix4(_m0.makeRotationX(Math.PI / 2));
+    this.projectile = new Mesh(this.geometry);
+    this.id = id;
+  }
+
+  getBoundingBox(): Box3 {
+    this.boundingBox.setFromObject(this.projectile);
+    return this.boundingBox;
+  }
+
+  handleCollision(obj: Collidable) {}
+
+  step() {
+    if (this.desiredPosition && this.desiredDirection) {
+      _v0.set(...this.desiredPosition);
+      // _v0.multiplyScalar(this.desiredDirection);
+      this.projectile.position.lerp(_v0, 0.05);
+    }
+
+    if (this.desiredRotationX) {
+      this.projectile.rotation.x = this.desiredRotationX;
+    }
+
+    if (this.desiredRotationY) {
+      this.projectile.rotation.y = this.desiredRotationY;
+    }
+  }
+}
+
 export class TanksProjectile implements Collidable {
   projectile: Mesh;
   geometry: CapsuleGeometry;
@@ -27,6 +75,7 @@ export class TanksProjectile implements Collidable {
   direction: number;
   bounces: number;
   type: CollidableType;
+  id: number;
 
   constructor(position: Vector3Tuple, target: Vector3Tuple) {
     this.geometry = new CapsuleGeometry(

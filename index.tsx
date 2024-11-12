@@ -19,7 +19,7 @@ import {
   TankMouseEvent,
 } from "./types";
 import { map1, TanksMapObject } from "./map";
-import { Game as TankGame } from "./game";
+import { Game as TankGame, isPartnerTank } from "./game";
 import { TANK_MOVEMENT_SPEED, TANK_ROTATION_SPEED } from "./playerTank";
 import { PartnerTank } from "./partnerTank";
 
@@ -310,12 +310,7 @@ function Game(props: GameProps) {
               }
             });
           }
-          game.current.updateClient(
-            clientId,
-            tankState.position,
-            tankState.rotation,
-            tankState.cannonDirection,
-          );
+          game.current.updateClient(clientId, tankState);
         }
       }
     }
@@ -348,6 +343,20 @@ function Game(props: GameProps) {
     }
   });
 
+  function getOtherTankProjectiles() {
+    if (game.current) {
+      return Object.values(game.current.otherTanks).map((otherTank) => {
+        if (isPartnerTank(otherTank)) {
+          otherTank.projectiles.values;
+          const projectiles = Array.from(otherTank.projectiles.values());
+          return projectiles.map((p) => {
+            return <primitive key={p.projectile.uuid} object={p.projectile} />;
+          });
+        }
+      });
+    }
+  }
+
   return (
     <>
       <Light />
@@ -359,6 +368,7 @@ function Game(props: GameProps) {
           type="map"
         />
       ))}
+      {getOtherTankProjectiles()}
       {game.current &&
         Object.values(game.current.otherTanks).map((p) => {
           return <primitive object={p.tank} />;

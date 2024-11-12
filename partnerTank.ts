@@ -6,7 +6,8 @@ import {
   Vector3Tuple,
   Vector3,
 } from "three";
-import { Collidable, CollidableType } from "./types";
+import { Collidable, CollidableType, Projectile } from "./types";
+import { PartnerTanksProjectile } from "./projectile";
 
 const _v0 = new Vector3();
 const _v1 = new Vector3();
@@ -20,6 +21,7 @@ export class PartnerTank implements Collidable {
   desiredRotation: number;
   desiredCannonDirection: Vector3Tuple;
   type: CollidableType;
+  projectiles: Map<number, PartnerTanksProjectile>;
 
   constructor(obj: Group) {
     this.tank = obj;
@@ -27,6 +29,7 @@ export class PartnerTank implements Collidable {
     this.cannon = skinnedMesh.skeleton.bones[1];
     this.boundingBox = new Box3();
     this.type = "partnerTank";
+    this.projectiles = new Map();
   }
 
   // TODO: do we need this?
@@ -56,6 +59,32 @@ export class PartnerTank implements Collidable {
     }
   }
 
+  updateProjectiles(projectiles: Projectile[]) {
+    const currentIds = new Set(this.projectiles.keys());
+    projectiles.forEach((p) => {
+      if (currentIds.has(p.id)) {
+        currentIds.delete(p.id);
+        const tanksProjectile = this.projectiles.get(p.id);
+        if (tanksProjectile) {
+          tanksProjectile.desiredPosition = p.position;
+          tanksProjectile.desiredDirection = p.direction;
+          tanksProjectile.desiredRotationX = p.rotation[0];
+          tanksProjectile.desiredRotationY = p.rotation[1];
+        }
+      } else {
+        const newProjectile = new PartnerTanksProjectile(p.id);
+        newProjectile.desiredPosition = p.position;
+        newProjectile.desiredDirection = p.direction;
+        newProjectile.desiredRotationX = p.rotation[0];
+        newProjectile.desiredRotationY = p.rotation[1];
+        this.projectiles.set(p.id, newProjectile);
+      }
+    });
+    currentIds.forEach((id) => {
+      this.projectiles.delete(id);
+    });
+  }
+
   step() {
     if (this.desiredPosition) {
       _v0.set(...this.desiredPosition);
@@ -81,6 +110,10 @@ export class PartnerTank implements Collidable {
     if (this.desiredCannonDirection) {
       _v2.set(...this.desiredCannonDirection);
       this.lerpRotateCannonToDirection(_v2);
+    }
+
+    for (const projectile of this.projectiles.values()) {
+      projectile.step();
     }
   }
 }
