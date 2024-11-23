@@ -117,6 +117,7 @@ class TanksServer {
     const gameId = randomBytes(10).toString("hex");
     // create the game and first client
     const game = new TanksServerGame(gameId);
+    console.log(map1);
     const client = new Client(new Group(), map1, gameId, clientId);
     game.addClient(clientId, client);
     client.playerTank.tank.position.set(...map1.startingPosition);
@@ -132,10 +133,10 @@ class TanksServer {
       const game = this.games[gameId];
       const clientId = randomBytes(8).toString("hex");
       const client = new Client(new Group(), map1, gameId, clientId);
-      Object.values(game.clients).forEach((existingClient) => {
-        existingClient.joinGame(clientId, client.playerTank);
-        client.joinGame(existingClient.clientId, existingClient.playerTank);
-      });
+      // Object.values(game.clients).forEach((existingClient) => {
+      //   existingClient.joinGame(clientId, client.playerTank);
+      //   client.joinGame(existingClient.clientId, existingClient.playerTank);
+      // });
 
       game.addClient(clientId, client);
       return { clientId: clientId, gameId: gameId };

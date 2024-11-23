@@ -40,58 +40,58 @@ export class TanksMapObject implements Collidable {
 
 // LEVEL 1!
 export const map1: TanksMap = {
-  startingPosition: [-10, 0, 0],
+  startingPosition: [0, 0, 0],
   secondStartingPosition: [-10, -5, 0],
   objects: [
-    new TanksMapObject({
-      position: [0, 5, 0],
-      geometry: [2, 1, 2],
-      texture: "wood/wood4.jpg",
-    }),
-    new TanksMapObject({
-      position: [1, 4, 0],
-      geometry: [2, 1, 2],
-      texture: "wood/wood4.jpg",
-    }),
-    new TanksMapObject({
-      position: [2, 3, 0],
-      geometry: [2, 1, 2],
-      texture: "wood/wood4.jpg",
-    }),
-    new TanksMapObject({
-      position: [3, 2, 0],
-      geometry: [2, 1, 2],
-      texture: "wood/wood4.jpg",
-    }),
-    new TanksMapObject({
-      position: [4, 1, 0],
-      geometry: [2, 1, 2],
-      texture: "wood/wood4.jpg",
-    }),
-    new TanksMapObject({
-      position: [5, 0, 0],
-      geometry: [2, 1, 2],
-      texture: "wood/wood4.jpg",
-    }),
-    new TanksMapObject({
-      position: [0, 10, 0],
-      geometry: [40, 0.5, 0.5],
-      texture: "wood/wood.png",
-    }),
-    new TanksMapObject({
-      position: [0, -10, 0],
-      geometry: [40, 0.5, 0.5],
-      texture: "wood/wood.png",
-    }),
-    new TanksMapObject({
-      position: [-20, 0, 0],
-      geometry: [0.5, 20.5, 0.5],
-      texture: "wood/wood.png",
-    }),
-    new TanksMapObject({
-      position: [20, 0, 0],
-      geometry: [0.5, 20.5, 0.5],
-      texture: "wood/wood.png",
-    }),
+    // new TanksMapObject({
+    //   position: [0, 0, -1],
+    //   geometry: [40, 20, 0.1],
+    //   texture: "wood/wood.png",
+    // }),
+    // new TanksMapObject({
+    //   position: [1, 4, 0],
+    //   geometry: [2, 1, 2],
+    //   texture: "wood/wood4.jpg",
+    // }),
+    // new TanksMapObject({
+    //   position: [2, 3, 0],
+    //   geometry: [2, 1, 2],
+    //   texture: "wood/wood4.jpg",
+    // }),
+    // new TanksMapObject({
+    //   position: [3, 2, 0],
+    //   geometry: [2, 1, 2],
+    //   texture: "wood/wood4.jpg",
+    // }),
+    // new TanksMapObject({
+    //   position: [4, 1, 0],
+    //   geometry: [2, 1, 2],
+    //   texture: "wood/wood4.jpg",
+    // }),
+    // new TanksMapObject({
+    //   position: [5, 0, 0],
+    //   geometry: [2, 1, 2],
+    //   texture: "wood/wood4.jpg",
+    // }),
+    // new TanksMapObject({
+    //   position: [0, 10, 0],
+    //   geometry: [40, 0.5, 0.5],
+    //   texture: "wood/wood.png",
+    // }),
+    // new TanksMapObject({
+    //   position: [0, -10, 0],
+    //   geometry: [40, 0.5, 0.5],
+    //   texture: "wood/wood.png",
+    // }),
+    // new TanksMapObject({
+    //   position: [-20, 0, 0],
+    //   geometry: [0.5, 20.5, 0.5],
+    //   texture: "wood/wood.png",
+    // }),
+    // new TanksMapObject({
+    //   position: [20, 0, 0],
+    //   geometry: [0.5, 20.5, 0.5],
+    //   texture: "wood/wood.png",
+    // }),
   ],
 };
